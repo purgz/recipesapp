@@ -1,0 +1,66 @@
+<section class="head">
+  <input
+    type="search"
+    placeholder="Søg i titler eller tags…"
+    [ngModelOptions]="{ standalone: true }"
+    [ngModel]="search()"
+    (ngModelChange)="search.set($event)"
+  />
+  <button type="button" (click)="newFromUrl()">+ Ny opskrift (link)</button>
+</section>
+
+@if (busy()) {
+  <p class="muted">Henter…</p>
+} @else if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+
+@if (tags().length) {
+  <div class="chips">
+    @for (t of tags(); track t) {
+      <button
+        type="button"
+        class="chip"
+        [class.on]="activeTag() === t"
+        (click)="toggleTag(t)"
+      >
+        {{ t }}
+      </button>
+    }
+  </div>
+}
+
+<div class="grid">
+  @for (r of items(); track r.id) {
+    <article class="card" (click)="open(r.id)">
+      <div class="thumb">
+        @if (r.imageUrl; as url) {
+          <img [src]="url" alt="" loading="lazy" />
+        } @else {
+          <span class="noimg">🍽</span>
+        }
+      </div>
+      <div class="body">
+        <h3>{{ r.title }}</h3>
+        <p class="meta">
+          @if (r.cookMinutes || r.prepMinutes) {
+            ⏱ {{ (r.prepMinutes ?? 0) + (r.cookMinutes ?? 0) }} min ·
+          }
+          {{ r.servings }} ‎pers.
+        </p>
+        <div class="chips small">
+          @if (r.isSeasonalHighlight) {
+            <span class="chip season">sæson</span>
+          }
+          @for (t of r.tags.slice(0, 4); track t) {
+            <span class="chip pass">{{ t }}</span>
+          }
+        </div>
+      </div>
+    </article>
+  } @empty {
+    @if (!busy()) {
+      <p class="muted">Ingen opskrifter endnu — Indsæt et link ovenfor.</p>
+    }
+  }
+</div>

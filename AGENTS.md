@@ -28,7 +28,11 @@ ingredients/steps, tags, comments, weekly meal plan, auto shopping list.
 ## Architecture rules (easy to get wrong)
 
 - Extraction must be a chain of `IRecipeExtractor` implementations, never inline logic in controllers:
-  SchemaOrg (JSON-LD) → YouTube (metadata/captions via timedtext, no API key) → optional LLM → manual edit form
+  SchemaOrg (JSON-LD) → Microdata (itemprop fallback for old WP blogs like valdemarsro.dk, HtmlAgilityPack) →
+  YouTube (metadata/captions via timedtext, no API key) → optional LLM → manual edit form.
+  Extractors run lowest `Priority` first and merge warnings when none produce data.
+- Auth details: API calls must fail with 401/403, never redirect (SPA owns navigation) — cookie auth events
+  override `OnRedirectToLogin`. `IFormFile` upload endpoint must call `.DisableAntiforgery()`.
 - LLM stage: OpenAI-compatible endpoint, config-gated by `ExtractLlm:Enabled` (default OFF). On the deployed VM an `ollama` sibling container serves `http://ollama:11434/v1` with a 7–8B Q4 model (12 GB RAM budget — 12B-class models don't have comfortable headroom). LLM extraction runs as a background job (202 + polling), max 1 concurrent, context ≤ 8k. Never a blocking synchronous request.
 - Deferred fallback (do not build without asking): local-PC edition on user's hardware + one-way publish `POST /api/publish` with `PUBLISH_TOKEN`. Exists as a concept because VM inference may prove too slow; recipe JSON is the sync unit.
 - Auth = single shared household secret → signed HttpOnly cookie. Do NOT add ASP.NET Identity or per-user accounts.
@@ -37,6 +41,7 @@ ingredients/steps, tags, comments, weekly meal plan, auto shopping list.
 - Seasonal DK produce per month = static TypeScript constant in the Angular app, not DB rows.
 - Meal plan: `MealPlanEntry` unique on `(Date, Slot)`; `ShoppingList` unique per `WeekStart` (Monday). Slot enum: Breakfast/Lunch/Dinner/Extra.
 - Routing: `/api/{**}` falls back to 404 BEFORE the SPA `index.html` fallback — keep that ordering in `Program.cs`.
+  Do NOT use `UseDefaultFiles()` — root `/` is served by the anonymous SPA file fallback instead.
 
 ## Deployment
 

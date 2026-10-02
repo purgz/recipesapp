@@ -13,6 +13,7 @@ public class Recipe
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? SourceUrl { get; set; }
+    public string? Description { get; set; }
     public string? ImageUploadedPath { get; set; }
     public string? ImageOriginalUrl { get; set; }
     public int Servings { get; set; } = 4;

@@ -1,0 +1,116 @@
+.head {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+
+  input {
+    flex: 1;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #d8d4cd;
+    border-radius: 8px;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+
+  &.small {
+    gap: 0.3rem;
+  }
+
+  .chip {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid #d8d4cd;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .chip.season {
+    background: #eaf4e8;
+    border-color: #bcd9b4;
+    color: #3d6b34;
+    cursor: default;
+  }
+
+  .chip.pass {
+    background: #f6f5f2;
+    border-color: #eceae5;
+    color: #6b675f;
+    cursor: default;
+  }
+
+  .chip.on {
+    background: #2d2a26;
+    color: #fff;
+    border-color: #2d2a26;
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #eceae5;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  }
+
+  .thumb {
+    background: #f2f1ed;
+    aspect-ratio: 4 / 3;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .noimg {
+      display: block;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      font-size: 2rem;
+      opacity: 0.4;
+    }
+  }
+
+  .body {
+    padding: 0.7rem 0.9rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: #2d2a26;
+    }
+
+    .meta {
+      margin: 0.35rem 0 0.4rem;
+      font-size: 0.85rem;
+      color: #8b867e;
+    }
+  }
+}
+
+.muted {
+  color: #8b867e;
+}
+
+.error {
+  color: #b3402f;
+}

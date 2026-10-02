@@ -1,0 +1,20 @@
+<div class="login-card">
+  <h1>Opskriftsbogen</h1>
+  <p class="sub">Log ind med familiens kodeord</p>
+
+  <form (ngSubmit)="submit()">
+    <input
+      type="password"
+      placeholder="Kodeord"
+      autocomplete="current-password"
+      [ngModelOptions]="{ standalone: true }"
+      [ngModel]="password()"
+      (ngModelChange)="password.set($event)"
+    />
+    <button type="submit" [disabled]="busy()">{{ busy() ? 'Logger ind…' : 'Log ind' }}</button>
+  </form>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+</div>

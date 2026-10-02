@@ -1,0 +1,45 @@
+:host {
+  display: block;
+  padding-top: 12vh;
+}
+
+.login-card {
+  max-width: 380px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e5e3de;
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+
+  h1 {
+    margin: 0;
+    font-size: 1.4rem;
+  }
+
+  .sub {
+    color: #8b867e;
+    margin: 0.4rem 0 1.4rem;
+    font-size: 0.95rem;
+  }
+
+  input[type='password'] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid #d8d4cd;
+    border-radius: 8px;
+    margin-bottom: 0.8rem;
+    font-size: 1rem;
+  }
+
+  button {
+    width: 100%;
+  }
+}
+
+.error {
+  color: #b3402f;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}

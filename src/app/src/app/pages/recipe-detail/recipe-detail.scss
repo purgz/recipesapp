@@ -1,0 +1,178 @@
+:host {
+  display: block;
+}
+
+.detail {
+  background: #fff;
+  border: 1px solid #eceae5;
+  border-radius: 12px;
+  padding: 1.2rem;
+
+  .hero {
+    display: flex;
+    gap: 1.2rem;
+
+    img {
+      width: 300px;
+      height: 220px;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    .noimg {
+      width: 300px;
+      height: 220px;
+      display: grid;
+      place-items: center;
+      background: #f2f1ed;
+      border-radius: 10px;
+      font-size: 3rem;
+      opacity: 0.5;
+    }
+
+    .hero-body {
+      flex: 1;
+
+      h1 {
+        margin: 0.2rem 0 0.4rem;
+      }
+
+      .desc {
+        color: #6b675f;
+        font-size: 0.95rem;
+      }
+
+      .meta {
+        color: #8b867e;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.6rem 0;
+
+    .chip {
+      font-size: 0.78rem;
+      padding: 0.18rem 0.6rem;
+      border-radius: 999px;
+      background: #f6f5f2;
+      border: 1px solid #eceae5;
+      color: #6b675f;
+    }
+
+    .chip.season {
+      background: #eaf4e8;
+      border-color: #bcd9b4;
+      color: #3d6b34;
+    }
+  }
+
+  .btns {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(240px, 340px) 1fr;
+    gap: 1.4rem;
+    margin-top: 1.2rem;
+
+    @media (max-width: 700px) {
+      grid-template-columns: 1fr;
+    }
+
+    section h2 {
+      font-size: 1.02rem;
+      margin: 0 0 0.5rem;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 1rem;
+      color: #2d2a26;
+    }
+
+    ol {
+      margin: 0;
+      padding-left: 1.3rem;
+    }
+
+    ol li {
+      margin-bottom: 0.7rem;
+      line-height: 1.45;
+    }
+
+    ul li {
+      margin-bottom: 0.3rem;
+    }
+  }
+
+  .comments {
+    margin-top: 1.2rem;
+
+    .comment {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      border-top: 1px solid #f0eee9;
+      padding: 0.6rem 0;
+    }
+
+    .author {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .body time {
+      color: #8b867e;
+      font-size: 0.8rem;
+    }
+
+    .body p {
+      margin: 0.2rem 0 0;
+    }
+
+    .newcomment {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.7rem;
+
+      input {
+        padding: 0.45rem 0.7rem;
+        border: 1px solid #d8d4cd;
+        border-radius: 8px;
+        font: inherit;
+      }
+
+      input[name='author'] {
+        max-width: 160px;
+      }
+
+      input[name='text'] {
+        flex: 1;
+      }
+    }
+  }
+}
+
+.muted {
+  color: #8b867e;
+}
+
+.error {
+  color: #b3402f;
+}
+
+.danger {
+  color: #b3402f;
+  border-color: #e0b7ae;
+
+  &:hover {
+    background: #faefec;
+  }
+}

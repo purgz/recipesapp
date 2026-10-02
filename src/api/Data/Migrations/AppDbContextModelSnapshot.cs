@@ -54,6 +54,9 @@ namespace RecipeApp.Api.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ImageOriginalUrl")
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");

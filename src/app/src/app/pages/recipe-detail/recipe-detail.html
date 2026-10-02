@@ -1,0 +1,89 @@
+@if (busy()) {
+  <p class="muted">Henter…</p>
+} @else if (error()) {
+  <p class="error">{{ error() }}</p>
+} @else if (recipe(); as r) {
+  <article class="detail">
+    <div class="hero">
+      @if (r; as rr) {
+        @if (rr.imageUrl; as url) {
+          <img [src]="url" alt="" />
+        } @else {
+          <div class="noimg">🍽</div>
+        }
+      }
+      <div class="hero-body">
+        <h1>{{ r.title }}</h1>
+        @if (r.description; as d) {
+          <p class="desc">{{ d }}</p>
+        }
+        <p class="meta">
+          {{ r.servings }} portioner
+          @if (r.prepMinutes) {
+            · {{ r.prepMinutes }} min forberedelse
+          }
+          @if (r.cookMinutes) {
+            · {{ r.cookMinutes }} min tilberedning
+          }
+        </p>
+        <div class="chips">
+          @if (r.isSeasonalHighlight) {
+            <span class="chip season">sæson</span>
+          }
+          @for (t of r.tags; track t) {
+            <span class="chip">{{ t }}</span>
+          }
+        </div>
+        <div class="btns">
+          <button type="button" (click)="edit()">Rediger</button>
+          @if (r.sourceUrl; as src) {
+            <button type="button" class="ghost" (click)="openSource()">Kilde ↗</button>
+          }
+          <button type="button" class="ghost danger" (click)="remove()">Slet</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cols">
+      <section class="ingredients">
+        <h2>Ingredienser</h2>
+        <ul>
+          @for (i of r.ingredients; track $index) {
+            <li>@if (i.qty !== null) { {{ i.qty }} } @if (i.unit) { {{ i.unit }} } {{ i.name }}</li>
+          }
+        </ul>
+      </section>
+
+      <section class="steps">
+        <h2>Sådan laver du</h2>
+        <ol>
+          @for (s of r.steps; track $index) {
+            <li>{{ s }}</li>
+          }
+        </ol>
+      </section>
+    </div>
+
+    <section class="comments">
+      <h2>Kommentarer ({{ r.comments.length }})</h2>
+      @for (c of r.comments; track c.id) {
+        <div class="comment">
+          <div class="body">
+            <span class="author">{{ c.author }}</span> ·
+            <time>{{ c.createdAt | date: 'dd MMM yyyy' }}</time>
+            <p>{{ c.text }}</p>
+          </div>
+          <button type="button" class="ghost small" (click)="removeComment(c.id)">✕</button>
+        </div>
+      } @empty {
+        <p class="muted">Ingen kommentarer endnu.</p>
+      }
+
+      <form class="newcomment">
+        <input type="text" placeholder="Hvem (valgfri)" [(ngModel)]="commentAuthor" name="author" />
+        <input type="text" placeholder="Skriv en note…" [(ngModel)]="commentText" name="text" />
+        <button type="button" (click)="addComment()">Tilføj</button>
+      </form>
+    </section>
+  </article>
+}

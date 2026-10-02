@@ -1,0 +1,45 @@
+header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.7rem 1.2rem;
+  background: #fff;
+  border-bottom: 1px solid #e5e3de;
+
+  .brand {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #2d2a26;
+    text-decoration: none;
+  }
+
+  nav {
+    display: flex;
+    gap: 1rem;
+    flex: 1;
+
+    a {
+      color: #6b675f;
+      text-decoration: none;
+      font-size: 0.95rem;
+
+      &:hover,
+      &.active {
+        color: #2d2a26;
+      }
+    }
+  }
+
+  button {
+    font-size: 0.9rem;
+  }
+}
+
+main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1.2rem;
+}
