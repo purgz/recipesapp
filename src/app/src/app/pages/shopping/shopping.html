@@ -23,15 +23,15 @@
           <input type="checkbox" [checked]="i.checked" (change)="toggle(i)" />
           <span class="qty">
             @if (i.quantity !== null && i.quantity !== undefined) {
-              {{ i.quantity }}
+              {{ fmtQty(i.quantity) }}
             }
             @if (i.unit) {
               {{ i.unit }}
             }
           </span>
           <span class="name">{{ i.name }}</span>
-          @if (i.recipeTitles.length) {
-            <span class="from">({{ i.recipeTitles.join(', ') }})</span>
+          @if (i.mealCount > 0) {
+            <span class="from">· {{ i.mealCount }} {{ i.mealCount === 1 ? 'måltid' : 'måltider' }}: {{ i.recipeTitles.join(', ') }}</span>
           }
         </label>
         <button type="button" class="ghost tiny" title="Fjern vare" (click)="remove(i)">✕</button>

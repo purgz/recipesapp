@@ -176,6 +176,9 @@ namespace RecipeApp.Api.Data.Migrations
                     b.Property<bool>("Checked")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("MealCount")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)

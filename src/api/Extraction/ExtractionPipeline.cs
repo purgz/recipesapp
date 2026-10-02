@@ -61,10 +61,3 @@ public class ExtractionPipeline(IEnumerable<IRecipeExtractor> extractors, ILogge
         return empty;
     }
 }
-
-public class ExtractLlmOptions
-{
-    public bool Enabled { get; set; }
-    public string BaseUrl { get; set; } = "http://localhost:11434/v1";
-    public string Model { get; set; } = "";
-}

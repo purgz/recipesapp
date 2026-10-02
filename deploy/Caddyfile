@@ -1,0 +1,4 @@
+# Replace with your real subdomain; Caddy issues the TLS cert automatically.
+recipes.example.dk {
+	reverse_proxy api:8080
+}

@@ -1,0 +1,26 @@
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  api:
+    image: ghcr.io/${GHCR_REPO:?set GHCR_REPO in .env}:latest
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: Data Source=/app/App_Data/app.db
+      Household__Password: ${HOUSEHOLD_PASSWORD:?set in .env}
+    volumes:
+      - recipe_data:/app/App_Data
+
+volumes:
+  recipe_data:
+  caddy_data:
+  caddy_config:

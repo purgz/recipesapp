@@ -80,6 +80,7 @@ public class ShoppingListItem
     public string? Unit { get; set; }
     public double? Quantity { get; set; }
     public string RecipeTitlesJson { get; set; } = "[]";
+    public int MealCount { get; set; }
     public bool Checked { get; set; }
     public bool AddedManually { get; set; }
 }

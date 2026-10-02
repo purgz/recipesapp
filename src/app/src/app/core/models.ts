@@ -94,6 +94,7 @@ export interface ShoppingItem {
   unit?: string | null;
   quantity?: number | null;
   recipeTitles: string[];
+  mealCount: number;
   checked: boolean;
   addedManually: boolean;
 }

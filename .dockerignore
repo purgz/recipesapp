@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/App_Data/
+**/.angular/
+**/wwwroot/
+.git

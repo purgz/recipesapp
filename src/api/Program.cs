@@ -19,9 +19,6 @@ Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "www
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
-builder.Services.AddOptions<ExtractLlmOptions>()
-    .BindConfiguration("ExtractLlm");
-
 builder.Services
     .AddHttpClient("scrape", c =>
     {

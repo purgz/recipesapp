@@ -21,20 +21,25 @@ ingredients/steps, tags, comments, weekly meal plan, auto shopping list.
 
 ## Layout
 
-- `src/api/` — .NET: entities + DbContext + migrations in `Data/`; `wwwroot` reserved for the Angular prod build
+- `src/api/` — .NET: entities + DbContext + migrations in `Data/`; `wwwroot` reserved for the Angular prod build (a `.gitkeep` must stay — StaticWebAssetsLoader throws if the dir is absent!)
 - `src/app/` — Angular app; `proxy.conf.json` for dev
+- `deploy/` — VM runtime: `docker-compose.yml` + `Caddyfile` + `.env.example` (`.env` on VM, never committed)
+- `Dockerfile` (root, multi-stage: Angular → wwwroot, dotnet publish, single process) + `.dockerignore`
+- `.github/workflows/build-push-image.yml` — builds `linux/arm64` image on push to main → GHCR
+- `scripts/backup.sh` — nightly tarball (+ optional Azure Blob upload); cron wiring documented in-file
 - `AGENTS.md` — this file
 
 ## Architecture rules (easy to get wrong)
 
-- Extraction must be a chain of `IRecipeExtractor` implementations, never inline logic in controllers:
+- Extraction: deterministic chain of `IRecipeExtractor` implementations, never inline logic in controllers:
   SchemaOrg (JSON-LD) → Microdata (itemprop fallback for old WP blogs like valdemarsro.dk, HtmlAgilityPack) →
-  YouTube (metadata/captions via timedtext, no API key) → optional LLM → manual edit form.
-  Extractors run lowest `Priority` first and merge warnings when none produce data.
+  YouTube (metadata/captions via timedtext, no API key). Extractors run lowest `Priority` first and merge
+  warnings when none produce data. The LLM is NOT a chain member.
 - Auth details: API calls must fail with 401/403, never redirect (SPA owns navigation) — cookie auth events
   override `OnRedirectToLogin`. `IFormFile` upload endpoint must call `.DisableAntiforgery()`.
-- LLM stage: OpenAI-compatible endpoint, config-gated by `ExtractLlm:Enabled` (default OFF). On the deployed VM an `ollama` sibling container serves `http://ollama:11434/v1` with a 7–8B Q4 model (12 GB RAM budget — 12B-class models don't have comfortable headroom). LLM extraction runs as a background job (202 + polling), max 1 concurrent, context ≤ 8k. Never a blocking synchronous request.
-- Deferred fallback (do not build without asking): local-PC edition on user's hardware + one-way publish `POST /api/publish` with `PUBLISH_TOKEN`. Exists as a concept because VM inference may prove too slow; recipe JSON is the sync unit.
+- NO LLM anywhere (user decision): no Ollama service, no publish/LLM-edition fallback — do not add AI
+  features back without asking. Video recipes (YouTube only): metadata + captions land as editable
+  draft text; parts that resist parsing are structured manually in the edit form.
 - Auth = single shared household secret → signed HttpOnly cookie. Do NOT add ASP.NET Identity or per-user accounts.
 - `Ingredients`/`Steps` are stored as JSON strings (`IngredientsJson`/`StepsJson`) on Recipe; shopping-list aggregation matches on ingredient name + unit exactly.
 - Danish ingredient units ("tsk", "spsk", "g", "båd"...) must survive scraping verbatim — never translate or convert.
@@ -46,7 +51,7 @@ ingredients/steps, tags, comments, weekly meal plan, auto shopping list.
 ## Deployment
 
 - Target: Oracle Cloud free Ampere A1 (ARM64). GitHub Actions builds a `linux/arm64` image → GHCR; VM pulls and runs `docker compose up -d`.
-- Compose services: `caddy` (TLS + reverse proxy `api:8080`, subdomain `recipes.<domain>` with auto-HTTPS), `api`, `ollama` (model + SQLite + images all on one named data volume).
+- Compose services: `caddy` (TLS + reverse proxy `api:8080`, subdomain `recipes.<domain>` with auto-HTTPS) and `api` (SQLite + uploaded images on one named data volume). No LLM — tiny footprint, safe on the always-free tier.
 - Gotcha: ports 80/443 must be opened TWICE on Oracle — VCN subnet security list AND instance security list.
 - Oracle may reclaim idle free-tier instances: nightly cron backs up SQLite DB + `App_Data/images` (tarball → Azure Blob, user's existing account). Nothing on the VM is unreproducible except backups.
 - Fallback host if reclaimed: Hetzner ~€4/mo, same compose file; also maintain Docker image for `linux/amd64` if switching.

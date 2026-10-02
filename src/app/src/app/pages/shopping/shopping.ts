@@ -105,6 +105,16 @@ export class Shopping implements OnInit {
     }
   }
 
+  protected fmtQty(q?: number | null): string {
+    if (q === null || q === undefined) {
+      return '';
+    }
+    if (Number.isInteger(q)) {
+      return String(q);
+    }
+    return String(Math.round(q * 100) / 100);
+  }
+
   protected onKeydown(evt: KeyboardEvent): void {
     if (evt.key === 'Enter') {
       evt.preventDefault();

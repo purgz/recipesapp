@@ -1,18 +1,20 @@
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using RecipeApp.Api.Data;
 
 namespace RecipeApp.Api.Services;
 
-public record ShoppingItemDto(Guid Id, string Name, string? Unit, double? Quantity, List<string> RecipeTitles, bool Checked, bool AddedManually);
+public record ShoppingItemDto(Guid Id, string Name, string? Unit, double? Quantity, List<string> RecipeTitles, int MealCount, bool Checked, bool AddedManually);
 public record ShoppingListDto(DateOnly WeekStart, DateTime GeneratedAt, List<ShoppingItemDto> Items);
 public record PlanEntryDto(Guid? Id, DateOnly Date, MealSlot Slot, Guid? RecipeId, string? RecipeTitle);
 
 /// <summary>
 /// Builds the shopping list for a week by aggregating every ingredient of every
-/// planned recipe, matching on name+unit exactly (per AGENTS.md — never fuzzy).
-/// Missing quantities stay null (counted once, not summed). Checked state is
+/// planned meal, matching on name+unit exactly (per AGENTS.md — never fuzzy).
+/// A recipe planned on two days doubles its ingredient quantities; quantities
+/// that some occurrences lack stay null (counted, not summed). Checked state is
 /// preserved across regenerations so the household can de/select as they shop.
+/// MealCount = number of planned meals needing the item (titles are de-duped).
 /// </summary>
 public class ShoppingListService(AppDbContext db)
 {
@@ -21,12 +23,11 @@ public class ShoppingListService(AppDbContext db)
     public async Task<DateOnly> EnsureGenerated(DateOnly week, CancellationToken ct)
     {
         var monday = StartOfWeek(week);
-        var sunday = monday.AddDays(6);
 
         var entries = await db.MealPlanEntries
             .AsNoTracking()
             .Include(e => e.Recipe)
-            .Where(e => e.Date >= monday && e.Date <= sunday)
+            .Where(e => e.Date >= monday && e.Date <= monday.AddDays(6))
             .ToListAsync(ct);
 
         var oldChecked = await CheckedByWeek(monday, ct);
@@ -46,7 +47,7 @@ public class ShoppingListService(AppDbContext db)
         }
         list.GeneratedAt = DateTime.UtcNow;
 
-        foreach (var (name, unit, qty, titles) in Aggregate(entries))
+        foreach (var (name, unit, qty, titles, meals) in Aggregate(entries))
         {
             list.Items.Add(new ShoppingListItem
             {
@@ -54,6 +55,7 @@ public class ShoppingListService(AppDbContext db)
                 Unit = unit,
                 Quantity = qty,
                 RecipeTitlesJson = JsonSerializer.Serialize(titles, JsonOpts),
+                MealCount = meals,
                 Checked = oldChecked.GetValueOrDefault($"{name}|{unit ?? ""}", false),
                 AddedManually = false,
             });
@@ -81,7 +83,8 @@ public class ShoppingListService(AppDbContext db)
         return any.AddDays(-offset);
     }
 
-    private static List<(string Name, string? Unit, double? Qty, List<string> Titles)> Aggregate(List<MealPlanEntry> entries)
+    private static List<(string Name, string? Unit, double? Qty, List<string> Titles, int Meals)> Aggregate(
+        List<MealPlanEntry> entries)
     {
         var buckets = new Dictionary<string, List<(double? qty, string title, IngredientEntry ing)>>(StringComparer.Ordinal);
 
@@ -113,13 +116,13 @@ public class ShoppingListService(AppDbContext db)
             }
         }
 
-        var result = new List<(string, string?, double?, List<string>)>();
+        var result = new List<(string, string?, double?, List<string>, int)>();
         foreach (var bucket in buckets.Values)
         {
-            var first = bucket.Select(b => b.ing).First();
+            var first = bucket[0].ing;
             var titles = bucket.Select(b => b.title).Distinct(StringComparer.Ordinal).ToList();
             double? qty = bucket.All(b => b.qty is not null) ? bucket.Sum(b => b.qty!.Value) : null;
-            result.Add((first.Name, first.Unit, qty, titles));
+            result.Add((first.Name, first.Unit, qty, titles, bucket.Count));
         }
         return result.OrderBy(r => r.Item1, StringComparer.OrdinalIgnoreCase).ToList();
     }
@@ -136,6 +139,7 @@ public class ShoppingListService(AppDbContext db)
                 i.Unit,
                 i.Quantity,
                 TryDeserializeTitles(i.RecipeTitlesJson) ?? [],
+                i.MealCount,
                 i.Checked,
                 i.AddedManually))
             .ToList());

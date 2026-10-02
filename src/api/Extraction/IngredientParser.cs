@@ -25,12 +25,34 @@ public static partial class IngredientParser
         RegexOptions.ExplicitCapture)]
     private static partial Regex Line();
 
+    [GeneratedRegex(@"^(\d+)\s*[-–~]\s*\d+\s*", RegexOptions.ExplicitCapture)]
+    private static partial Regex Range();
+
+    /// <summary>"(180 g)", "(2.6 lb)", "(~4 pieces)" — parens that only hold numbers/units.</summary>
+    [GeneratedRegex(@"\(\s*[~≈]?\s*[\d.,/½¼¾\s]+(?:g|kg|mg|ml|dl|cl|l|oz|lbs|lb|floz|fl oz|tsp|tbsp|cups?)\b\.?\s*\)", RegexOptions.IgnoreCase)]
+    private static partial Regex ConversionParen();
+
+    /// <summary>RecipeTin style "1.3 kg / 2.6 lb chuck beef" — imperial tail right after the unit.</summary>
+    [GeneratedRegex(@"^\s*/\s*[\d.,]+\s*(?:lbs|lb|oz)\b\.?\s*", RegexOptions.IgnoreCase)]
+    private static partial Regex LeadingImperial();
+
+    /// <summary>"2.2 lb / 1 kg" swapped order, appearing inside the name.</summary>
+    [GeneratedRegex(@"\(\s*/?\s*[\d.,]+\s*(?:lbs|lb|oz)\b\.?\s*\)", RegexOptions.IgnoreCase)]
+    private static partial Regex InlineImperial();
+
     [GeneratedRegex(@"^\s*(\d+(?:[.,]\d+)?)", RegexOptions.ExplicitCapture)]
     private static partial Regex LeadingNumber();
 
     public static IngredientEntry Parse(string raw)
     {
         var text = raw.Trim().TrimStart('-', '•', '*', '·').Trim();
+
+        // Ranges like "20 - 25 corn tortillas" or "2-3 gulerødder" → take the lower bound.
+        var range = Range().Match(text);
+        if (range.Success)
+        {
+            text = range.Groups[1].Value + " " + text[range.Length..].TrimStart();
+        }
 
         var m = Line().Match(text);
         if (!m.Success)
@@ -46,11 +68,28 @@ public static partial class IngredientParser
         // (e.g. "2 store æbler": "store" is not a unit, so qty must stay + name grows).
         if (qty is not null && Units.Contains(unitRaw.ToLowerInvariant()))
         {
-            return new IngredientEntry(qty, unitRaw.ToLowerInvariant(), string.IsNullOrWhiteSpace(nameRaw) ? unitRaw : nameRaw);
+            return new IngredientEntry(qty, unitRaw.ToLowerInvariant(), CleanName(string.IsNullOrWhiteSpace(nameRaw) ? unitRaw : nameRaw));
         }
 
         // qty recognized but no known unit → the token belongs to the name
-        return new IngredientEntry(qty, null, m.Groups["unit"].Success ? $"{m.Groups["unit"].Value} {nameRaw}".Trim() : text);
+        return new IngredientEntry(qty, null, CleanName(m.Groups["unit"].Success ? $"{m.Groups["unit"].Value} {nameRaw}".Trim() : text));
+    }
+
+    /// <summary>
+    /// Strips scrape noise common in (especially English) ingredient lines:
+    /// parenthetical conversions "(180 g)", "(2.6 lb)", "(~4 pieces)",
+    /// leading "/ 2.6 lb" conversion tails, and stray punctuation.
+    /// Recipe instructions inside parentheses like "(skåret i tern)" survive.
+    /// </summary>
+    private static string CleanName(string name)
+    {
+        var s = ConversionParen().Replace(name, " ");
+        s = LeadingImperial().Replace(s, " ");
+        s = InlineImperial().Replace(s, " ");
+        s = s.Replace(", ,", ",").Replace("(,", "(").Replace(", )", ")");
+        s = System.Text.RegularExpressions.Regex.Replace(s, @"\s+", " ").Trim(' ', ',');
+        s = System.Text.RegularExpressions.Regex.Replace(s, @"\(\s*\)", " ");
+        return s.Trim(' ', ',');
     }
 
     private static double? ParseQty(string raw)
