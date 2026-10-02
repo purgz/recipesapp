@@ -1,0 +1,39 @@
+<h2>Sæson i Danmark</h2>
+<p class="muted">
+  Danske grøntsager i sæson lige nu — brug dem, mens de er på toppen og til bære-prisen.
+</p>
+
+<section class="months">
+  @for (m of monthNames; track $index) {
+    <button
+      type="button"
+      class="chip"
+      [class.on]="month() === $index + 1"
+      (click)="setMonth($index + 1)"
+    >{{ m }}</button>
+  }
+</section>
+
+<section class="produce">
+  <h3>{{ monthNames[month() - 1] }}</h3>
+  <div class="produce-grid">
+    @for (p of produce(); track p) {
+      <div class="produce-chip">{{ p }}</div>
+    }
+  </div>
+</section>
+
+<section class="recipes">
+  <h3>Sæsonfarvede opskrifter</h3>
+  @if (loading()) {
+    <p class="muted">Henter…</p>
+  } @else if (seasonalRecipes().length === 0) {
+    <p class="muted">Ingen inspiration endnu — markér en opskrift med “sæson”-kryds i redigeringsfeltet, så bliver den fremhævet her.</p>
+  } @else {
+    <ul>
+      @for (r of seasonalRecipes(); track r.id) {
+        <li (click)="open(r.id)">{{ r.title }}</li>
+      }
+    </ul>
+  }
+</section>
