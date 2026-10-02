@@ -1,0 +1,15 @@
+bin/
+obj/
+node_modules/
+dist/
+coverage/
+App_Data/
+*.db
+*.db-shm
+*.db-wal
+.angular/
+.vs/
+.vscode/
+*.user
+*.suo
+*.DotSettings.user
