@@ -13,6 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "App_Data"));
 Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "App_Data", "images"));
+// UseStaticFiles throws when wwwroot is absent (fresh clone / after clean) — create it and only register if present.
+Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "wwwroot"));
 
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseSqlite(builder.Configuration.GetConnectionString("Default")));
@@ -33,6 +35,7 @@ builder.Services.AddScoped<IRecipeExtractor, YouTubeRecipeExtractor>();
 builder.Services.AddScoped<IRecipeExtractor, SchemaOrgRecipeExtractor>();
 builder.Services.AddScoped<IRecipeExtractor, MicrodataRecipeExtractor>();
 builder.Services.AddScoped<ExtractionPipeline>();
+builder.Services.AddScoped<ShoppingListService>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -123,6 +126,7 @@ app.MapPost("/api/extract", async (ExtractUrlRequest req, ExtractionPipeline pip
 });
 
 app.MapRecipeEndpoints();
+app.MapPlanEndpoints();
 
 app.MapGet("/api/tags", async (AppDbContext db, CancellationToken ct) =>
     Results.Ok(await db.Tags.Select(t => t.Name).OrderBy(n => n).ToListAsync(ct)));

@@ -181,7 +181,7 @@ namespace RecipeApp.Api.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("TEXT");
 
-                    b.Property<double>("Quantity")
+                    b.Property<double?>("Quantity")
                         .HasColumnType("REAL");
 
                     b.Property<string>("RecipeTitlesJson")
@@ -199,7 +199,7 @@ namespace RecipeApp.Api.Data.Migrations
                     b.HasIndex("ShoppingListId", "Name", "Unit")
                         .IsUnique();
 
-                    b.ToTable("ShoppingListItem");
+                    b.ToTable("ShoppingListItems");
                 });
 
             modelBuilder.Entity("RecipeApp.Api.Data.Tag", b =>

@@ -13,4 +13,5 @@ App_Data/
 *.user
 *.suo
 *.DotSettings.user
-src/api/wwwroot/
+src/api/wwwroot/*
+!src/api/wwwroot/.gitkeep

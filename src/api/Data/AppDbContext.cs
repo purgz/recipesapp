@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RecipeComment> Comments => Set<RecipeComment>();
     public DbSet<MealPlanEntry> MealPlanEntries => Set<MealPlanEntry>();
     public DbSet<ShoppingList> ShoppingLists => Set<ShoppingList>();
+    public DbSet<ShoppingListItem> ShoppingListItems => Set<ShoppingListItem>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {

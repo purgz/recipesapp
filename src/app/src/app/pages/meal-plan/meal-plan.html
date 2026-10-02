@@ -1,0 +1,79 @@
+<section class="controls">
+  <button type="button" class="ghost" (click)="prevWeek()">‹</button>
+  <span class="weeklabel">{{ weekLabel() }}</span>
+  <button type="button" class="ghost" (click)="nextWeek()">›</button>
+  <button type="button" class="ghost small" (click)="gotoThisWeek()">Denne uge</button>
+</section>
+
+<div class="grid">
+  <div class="colhead"></div>
+  @for (s of slots; track s.slot) {
+    <div class="colhead">{{ s.label }}</div>
+  }
+
+  @for (d of days(); track d.date) {
+    <div class="dayname">{{ d.label }} <span class="date">{{ d.dateLabel }}</span></div>
+    @for (s of slots; track s.slot) {
+      @if (entryAt(d.date, s.slot); as e) {
+        <div class="cell filled">
+          <span class="title">{{ e.recipeTitle }}</span>
+          <button
+            type="button"
+            class="ghost tiny"
+            title="Fjern"
+            (click)="removeEntry(d.date, s.slot)"
+          >✕</button>
+        </div>
+      } @else {
+        <div class="cell empty" (click)="openChooser(d.date, s.slot)">+</div>
+      }
+    }
+  }
+</div>
+
+@if (chooser(); as target) {
+  <div class="overlay" (click)="closeChooser()">
+    <div class="chooser" (click)="$event.stopPropagation()">
+      <header>
+        <strong>Vælg opskrift</strong>
+        <button type="button" class="ghost" (click)="closeChooser()">✕</button>
+      </header>
+      <input
+        type="search"
+        placeholder="Filtrér opskrifter…"
+        [ngModelOptions]="{ standalone: true }"
+        [ngModel]="chooserSearch()"
+        (ngModelChange)="chooserSearch.set($event)"
+      />
+      <div class="chips">
+        @for (t of allTags(); track t) {
+          <button
+            type="button"
+            class="chip"
+            [class.on]="chooserTag() === t"
+            (click)="chooserTag.set(chooserTag() === t ? '' : t)"
+          >{{ t }}</button>
+        }
+      </div>
+      <ul class="candidates">
+        @for (r of chooserCandidates(); track r.id) {
+          <li (click)="pick(r.id)">
+            @if (r.imageUrl; as img) {
+              <img [src]="img" alt="" loading="lazy" />
+            }
+            <div>
+              <span>{{ r.title }}</span>
+              <span class="muted small">{{ r.tags.join(', ') }}</span>
+            </div>
+          </li>
+        } @empty {
+          <li class="muted">Ingen match — tilføj opskrifter først.</li>
+        }
+      </ul>
+    </div>
+  </div>
+}
+
+@if (busy()) {
+  <p class="muted">Opdaterer…</p>
+}

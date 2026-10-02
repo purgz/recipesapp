@@ -74,3 +74,33 @@ export interface RecipeDraft {
   warnings: string[];
   hasData: boolean;
 }
+
+export const SLOT_BREAKFAST = 1;
+export const SLOT_LUNCH = 2;
+export const SLOT_DINNER = 3;
+export const SLOT_EXTRA = 4;
+
+export interface PlanEntry {
+  id: string | null;
+  date: string;
+  slot: number;
+  recipeId: string | null;
+  recipeTitle: string | null;
+}
+
+export interface ShoppingItem {
+  id: string;
+  name: string;
+  unit?: string | null;
+  quantity?: number | null;
+  recipeTitles: string[];
+  checked: boolean;
+  addedManually: boolean;
+}
+
+export interface ShoppingList {
+  weekStart: string;
+  generatedAt: string;
+  items: ShoppingItem[];
+}
+

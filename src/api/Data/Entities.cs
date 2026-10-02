@@ -78,7 +78,7 @@ public class ShoppingListItem
     public ShoppingList ShoppingList { get; set; } = null!;
     public string Name { get; set; } = string.Empty;
     public string? Unit { get; set; }
-    public double Quantity { get; set; }
+    public double? Quantity { get; set; }
     public string RecipeTitlesJson { get; set; } = "[]";
     public bool Checked { get; set; }
     public bool AddedManually { get; set; }

@@ -1,0 +1,126 @@
+:host {
+  display: block;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+
+  .weeklabel {
+    min-width: 220px;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+}
+
+.cardlike {
+  background: #fff;
+  border: 1px solid #eceae5;
+  border-radius: 12px;
+  padding: 1.2rem;
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  border: 1px solid #eceae5;
+  border-radius: 12px;
+  overflow: hidden;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.9rem;
+    border-top: 1px solid #f0eee9;
+
+    &:first-child {
+      border-top: none;
+    }
+
+    label {
+      flex: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 0.55rem;
+      cursor: pointer;
+    }
+
+    .qty {
+      min-width: 68px;
+      font-weight: 600;
+      color: #2d2a26;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .name {
+      color: #2d2a26;
+    }
+
+    .from {
+      color: #8b867e;
+      font-size: 0.8rem;
+    }
+
+    &.done {
+      label {
+        text-decoration: line-through;
+      }
+
+      .qty,
+      .from {
+        opacity: 0.55;
+      }
+    }
+  }
+}
+
+.add {
+  margin-top: 1.4rem;
+  background: #fff;
+  border: 1px solid #eceae5;
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+
+  h2 {
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
+  }
+
+  .row {
+    display: flex;
+    gap: 0.5rem;
+
+    input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d8d4cd;
+      border-radius: 8px;
+    }
+
+    input.unit {
+      max-width: 220px;
+    }
+  }
+}
+
+.muted {
+  color: #8b867e;
+}
+
+.error {
+  color: #b3402f;
+}
+
+.tiny {
+  padding: 0 0.4rem;
+  font-size: 0.75rem;
+}
