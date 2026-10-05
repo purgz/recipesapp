@@ -24,8 +24,6 @@ export class RecipeForm implements OnInit {
   protected readonly error = signal('');
   protected readonly warnings = signal<string[]>([]);
   protected readonly extractedUrl = signal('');
-  protected readonly rawText = signal<string | null>(null);
-  protected readonly rawTextKind = signal<string | null>(null);
 
   protected imageUploadedPath = signal<string | null>(null);
   protected imageOriginalUrl = signal<string | null>(null);
@@ -109,8 +107,6 @@ export class RecipeForm implements OnInit {
     this.imageUploadedPath.set(null);
     this.ingredients.set(d.ingredients.length ? d.ingredients : [{ qty: null, unit: null, name: '' }]);
     this.steps.set(d.steps.slice(0, 60).length ? d.steps.slice(0, 60) : ['']);
-    this.rawText.set(d.rawText || null);
-    this.rawTextKind.set(d.rawTextKind || null);
     this.warnings.set(d.warnings ?? []);
     if (d.sourceUrl) {
       this.extractedUrl.set(d.sourceUrl);
@@ -229,10 +225,6 @@ export class RecipeForm implements OnInit {
     return this.imageUploadedPath() ?? this.imageOriginalUrl();
   }
 
-  protected rawLabel(): string {
-    const k = this.rawTextKind() === 'transcript' ? 'form.transcript' : 'form.description';
-    return this.i18n.t(k) + ' ' + this.i18n.t('form.rawHint');
-  }
 
   protected async onUrlInputKeypress(evt: KeyboardEvent): Promise<void> {
     if (evt.key === 'Enter') {

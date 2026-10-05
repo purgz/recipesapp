@@ -42,7 +42,7 @@ export class Shopping implements OnInit {
 
   protected weekLabel(): string {
     const week = this.week();
-    return `${formatDaDate(week)} â€“ ${formatDaDate(shiftWeek(week, 6))}`;
+    return `${formatDaDate(week)} - ${formatDaDate(shiftWeek(week, 6))}`;
   }
 
   protected async prev(): Promise<void> {

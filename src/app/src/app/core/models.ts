@@ -69,8 +69,6 @@ export interface RecipeDraft {
   ingredients: IngredientEntry[];
   steps: string[];
   tags: string[];
-  rawText?: string | null;
-  rawTextKind?: string | null;
   warnings: string[];
   hasData: boolean;
 }

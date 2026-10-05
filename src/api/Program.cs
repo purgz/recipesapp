@@ -28,7 +28,6 @@ builder.Services
         c.DefaultRequestHeaders.AcceptLanguage.ParseAdd("da-DK,da;q=0.9,en;q=0.8");
     });
 
-builder.Services.AddScoped<IRecipeExtractor, YouTubeRecipeExtractor>();
 builder.Services.AddScoped<IRecipeExtractor, SchemaOrgRecipeExtractor>();
 builder.Services.AddScoped<IRecipeExtractor, MicrodataRecipeExtractor>();
 builder.Services.AddScoped<ExtractionPipeline>();

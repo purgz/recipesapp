@@ -25,13 +25,6 @@
     </section>
   }
 
-  @if (rawText(); as rt) {
-    <details class="raw" [open]="true">
-      <summary>{{ rawLabel() }}</summary>
-      <pre>{{ rt }}</pre>
-    </details>
-  }
-
   @if (loading()) {
     <p class="muted">{{ i18n.t('form.fetching') }}</p>
   } @else {

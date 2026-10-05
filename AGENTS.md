@@ -1,7 +1,8 @@
 # RecipeApp
 
-Recipe manager for a Danish household: paste recipe URLs (incl. YouTube), extract
+Recipe manager for a Danish household: paste recipe URLs, extract
 ingredients/steps, tags, comments, weekly meal plan, auto shopping list.
+No video/YouTube support and NO LLM (user decision) - link pasting only.
 
 ## Stack
 
@@ -32,9 +33,9 @@ ingredients/steps, tags, comments, weekly meal plan, auto shopping list.
 ## Architecture rules (easy to get wrong)
 
 - Extraction: deterministic chain of `IRecipeExtractor` implementations, never inline logic in controllers:
-  SchemaOrg (JSON-LD) → Microdata (itemprop fallback for old WP blogs like valdemarsro.dk, HtmlAgilityPack) →
-  YouTube (metadata/captions via timedtext, no API key). Extractors run lowest `Priority` first and merge
-  warnings when none produce data. The LLM is NOT a chain member.
+  SchemaOrg (JSON-LD) → Microdata (itemprop fallback for old WP blogs like valdemarsro.dk, HtmlAgilityPack).
+  Extractors run lowest `Priority` first and merge warnings when none produce data. What resists parsing is
+  structured manually in the edit form. No YouTube/video extractor (removed - was too brittle); no LLM.
 - Auth details: API calls must fail with 401/403, never redirect (SPA owns navigation) — cookie auth events
   override `OnRedirectToLogin`. `IFormFile` upload endpoint must call `.DisableAntiforgery()`.
 - NO LLM anywhere (user decision): no Ollama service, no publish/LLM-edition fallback — do not add AI

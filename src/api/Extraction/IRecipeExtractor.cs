@@ -8,7 +8,7 @@ namespace RecipeApp.Api.Extraction;
 /// </summary>
 public interface IRecipeExtractor
 {
-    /// <summary>Lower runs earlier. SchemaOrg = 20 so YouTube-specific handling wins on YouTube URLs.</summary>
+    /// <summary>Lower runs earlier. SchemaOrg (20) favors the site's own JSON-LD; Microdata (30) is the fallback.</summary>
     int Priority { get; }
 
     bool CanHandle(string url);

@@ -5,8 +5,6 @@ namespace RecipeApp.Api.Extraction;
 /// <summary>
 /// Result of running the extraction chain over a URL. Every field is optional;
 /// anything missing gets filled in manually in the edit form.
-/// RawText carries material that resists structured parsing (e.g. a YouTube
-/// transcript) for the user to structure by hand.
 /// </summary>
 public class RecipeDraft
 {
@@ -22,12 +20,6 @@ public class RecipeDraft
     public List<string> Steps { get; set; } = [];
     public List<string> Tags { get; set; } = [];
 
-    /// <summary>Transcript or description text for manual structuring in the editor.</summary>
-    public string? RawText { get; set; }
-
-    /// <summary>What RawText contains: "transcript" | "description".</summary>
-    public string? RawTextKind { get; set; }
-
     public List<string> Warnings { get; set; } = [];
 
     public bool HasData =>
@@ -35,6 +27,5 @@ public class RecipeDraft
         || Ingredients.Count > 0
         || Steps.Count > 0
         || !string.IsNullOrWhiteSpace(ImageUrl)
-        || !string.IsNullOrWhiteSpace(RawText)
         || Tags.Count > 0;
 }
