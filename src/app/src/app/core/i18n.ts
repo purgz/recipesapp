@@ -97,6 +97,8 @@ const STRINGS: Record<string, Record<UiLang, string>> = {
   'plan.thisWeek': { da: 'Denne uge', en: 'This week' },
   'plan.remove': { da: 'Fjern', en: 'Remove' },
   'plan.updating': { da: 'Opdaterer...', en: 'Updating...' },
+  'shopping.groupsTitle': { da: 'Ugens opskrifter (grupperet per opskrift)', en: "This week's recipes (ingredient groups)" },
+  'plan.ingredientsTitle': { da: 'Ugens ingredienser (grupperet per opskrift)', en: "This week's ingredients (grouped per recipe)" },
   'plan.slot1': { da: 'Morgenmad', en: 'Breakfast' },
   'plan.slot2': { da: 'Frokost', en: 'Lunch' },
   'plan.slot3': { da: 'Aftensmad', en: 'Dinner' },

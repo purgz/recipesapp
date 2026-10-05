@@ -1,8 +1,9 @@
-﻿import { Component, OnInit, inject, signal } from '@angular/core';
+﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Lang } from '../../core/i18n';
 import { PlanApi, currentMonday, formatDaDate, shiftWeek } from '../../core/plan-api';
-import type { ShoppingList, ShoppingItem } from '../../core/models';
+import { RecipesApi } from '../../core/api';
+import type { IngredientEntry, PlanEntry, Recipe, ShoppingList, ShoppingItem } from '../../core/models';
 
 @Component({
   selector: 'app-shopping',
@@ -12,10 +13,13 @@ import type { ShoppingList, ShoppingItem } from '../../core/models';
 })
 export class Shopping implements OnInit {
   private readonly planApi = inject(PlanApi);
+  private readonly recipesApi = inject(RecipesApi);
   protected readonly i18n = inject(Lang);
 
   protected readonly week = signal(currentMonday());
   protected readonly list = signal<ShoppingList | null>(null);
+  protected readonly details = signal<Map<string, Recipe>>(new Map());
+  protected readonly planEntries = signal<PlanEntry[]>([]);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly newItemName = signal('');
@@ -33,12 +37,61 @@ export class Shopping implements OnInit {
         this.planApi.shopping(this.week()).subscribe({ next: res, error: rej }),
       );
       this.list.set(l);
+
+      // Load the week's planned recipes so the per-recipe ingredient groups
+      // below the aggregated list can be rendered.
+      const entries = await new Promise<PlanEntry[]>((res, rej) =>
+        this.planApi.plan(this.week()).subscribe({ next: res, error: rej }),
+      );
+      const ids = [...new Set(entries.map((e) => e.recipeId).filter((id): id is string => !!id))];
+      const details = await Promise.all(
+        ids.map(
+          (id) =>
+            new Promise<Recipe | null>((res) =>
+              this.recipesApi.get(id).subscribe({ next: (r) => res(r), error: () => res(null) }),
+            ),
+        ),
+      );
+      const map = new Map<string, Recipe>();
+      details.forEach((r) => {
+        if (r) {
+          map.set(r.id, r);
+        }
+      });
+      this.details.set(map);
+      this.planEntries.set(entries);
     } catch {
       this.error.set(this.i18n.t('shopping.loadFail'));
     } finally {
       this.busy.set(false);
     }
   }
+
+  /**
+   * Each recipe planned this week with its own ingredients — the per-recipe
+   * view next to the aggregated check-off list above it.
+   */
+  protected readonly grouped = computed(() => {
+    const detailMap = this.details();
+    const groups = new Map<string, { title: string; ingredients: IngredientEntry[]; when: string[] }>();
+    const slotLabel = (slot: number) => this.i18n.t('plan.slot' + slot);
+    for (const e of this.planEntries()) {
+      if (!e.recipeId) {
+        continue;
+      }
+      const recipe = detailMap.get(e.recipeId);
+      if (!recipe) {
+        continue;
+      }
+      if (!groups.has(e.recipeId)) {
+        groups.set(e.recipeId, { title: recipe.title, ingredients: recipe.ingredients, when: [] });
+      }
+      groups.get(e.recipeId)!.when.push(`${formatDaDate(e.date)}, ${slotLabel(e.slot)}`);
+    }
+    return [...groups.entries()]
+      .map(([id, g]) => ({ id, ...g }))
+      .sort((a, b) => a.title.localeCompare(b.title, 'da'));
+  });
 
   protected weekLabel(): string {
     const week = this.week();

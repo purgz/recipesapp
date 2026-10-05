@@ -131,6 +131,55 @@
   font-size: 0.75rem;
 }
 
+.groups {
+  margin-top: 1.4rem;
+
+  h2 {
+    font-size: 1.05rem;
+    margin: 0 0 0.7rem;
+  }
+}
+
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.8rem;
+}
+
+.group-card {
+  background: #fff;
+  border: 1px solid #eceae5;
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-bottom: 0.5rem;
+
+    strong {
+      color: #2d2a26;
+      font-size: 0.95rem;
+    }
+
+    .when {
+      color: #8b867e;
+      font-size: 0.8rem;
+    }
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.05rem;
+
+    li {
+      margin-bottom: 0.25rem;
+      font-size: 0.92rem;
+    }
+  }
+}
+
 @media (max-width: 620px) {
   .controls {
     flex-wrap: wrap;

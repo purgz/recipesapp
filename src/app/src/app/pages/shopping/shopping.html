@@ -63,4 +63,33 @@
       <button type="button" (click)="addCustom()">{{ i18n.t('shopping.add') }}</button>
     </div>
   </section>
+
+  @if (grouped().length) {
+    <section class="groups">
+      <h2>{{ i18n.t('shopping.groupsTitle') }}</h2>
+      <div class="group-grid">
+        @for (g of grouped(); track g.id) {
+          <div class="group-card">
+            <header>
+              <strong>{{ g.title }}</strong>
+              <span class="when">{{ g.when.join(' + ') }}</span>
+            </header>
+            <ul>
+              @for (i of g.ingredients; track $index) {
+                <li>
+                  @if (i.qty !== null && i.qty !== undefined) {
+                    {{ fmtQty(i.qty) }}
+                  }
+                  @if (i.unit) {
+                    {{ i.unit }}
+                  }
+                  {{ i.name }}
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    </section>
+  }
 }
