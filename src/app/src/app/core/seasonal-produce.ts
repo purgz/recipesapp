@@ -2,7 +2,7 @@
  * Danish seasonal produce per month (0 = januar). Static by design —
  * AGENTS.md: seasonal DK produce is a TS constant, never DB rows.
  */
-export const MONTH_NAMES: string[] = [
+export const MONTH_NAMES_DA: string[] = [
   'januar',
   'februar',
   'marts',
@@ -15,6 +15,21 @@ export const MONTH_NAMES: string[] = [
   'oktober',
   'november',
   'december',
+];
+
+export const MONTH_NAMES_EN: string[] = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 export const SEASONAL_PRODUCE: Record<number, string[]> = {

@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/auth';
+import { Lang } from '../../core/i18n';
 
 @Component({
   selector: 'app-login',
@@ -13,6 +14,7 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly i18n = inject(Lang);
 
   protected readonly password = signal('');
   protected readonly busy = signal(false);
@@ -26,11 +28,7 @@ export class LoginComponent {
       const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/recipes';
       void this.router.navigateByUrl(returnUrl);
     } catch {
-      this.error.set(
-        this.auth.passwordUnavailable()
-          ? 'Serveren mangler husholdnings-kodeord (Household:Password).'
-          : 'Forkert kodeord.',
-      );
+      this.error.set(this.auth.passwordUnavailable() ? this.i18n.t('login.server') : this.i18n.t('login.wrong'));
     } finally {
       this.busy.set(false);
     }

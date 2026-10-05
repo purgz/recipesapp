@@ -1,9 +1,11 @@
 <section class="controls">
-  <button type="button" class="ghost" (click)="prev()">‹</button>
+  <button type="button" class="ghost navbtn" (click)="prev()">‹</button>
   <span class="weeklabel">{{ weekLabel() }}</span>
-  <button type="button" class="ghost" (click)="next()">›</button>
+  <button type="button" class="ghost navbtn" (click)="next()">›</button>
   <span class="spacer"></span>
-  <button type="button" class="ghost small" [disabled]="busy()" (click)="renew()">Generér fra madplan</button>
+  <button type="button" class="ghost small" [disabled]="busy()" (click)="renew()">
+    {{ i18n.t('shopping.generate') }}
+  </button>
 </section>
 
 @if (error()) {
@@ -11,10 +13,7 @@
 }
 
 @if (!busy() && !list()) {
-  <p class="muted cardlike">
-    Ingen indkøbsliste for denne uge endnu. Føj opskrifter til madplanen —
-    listen genereres automatisk.
-  </p>
+  <p class="muted cardlike">{{ i18n.t('shopping.noneYet') }}</p>
 } @else if (list(); as l) {
   <ul class="items">
     @for (i of l.items; track i.id) {
@@ -31,22 +30,22 @@
           </span>
           <span class="name">{{ i.name }}</span>
           @if (i.mealCount > 0) {
-            <span class="from">· {{ i.mealCount }} {{ i.mealCount === 1 ? 'måltid' : 'måltider' }}: {{ i.recipeTitles.join(', ') }}</span>
+            <span class="from">· {{ i.mealCount }} {{ i.mealCount === 1 ? i18n.t('shopping.meal') : i18n.t('shopping.meals') }}: {{ (i.recipeTitles ?? []).join(', ') }}</span>
           }
         </label>
-        <button type="button" class="ghost tiny" title="Fjern vare" (click)="remove(i)">✕</button>
+        <button type="button" class="ghost tiny" title="{{ i18n.t('plan.remove') }}" (click)="remove(i)">✕</button>
       </li>
     } @empty {
-      <li class="muted">Listen er tom.</li>
+      <li class="muted">{{ i18n.t('shopping.empty') }}</li>
     }
   </ul>
 
   <section class="add">
-    <h2>Tilføj selv</h2>
+    <h2>{{ i18n.t('shopping.addYourself') }}</h2>
     <div class="row">
       <input
         type="text"
-        placeholder="Vare (f.eks. kaffe)…"
+        [placeholder]="i18n.t('shopping.itemPh')"
         [ngModelOptions]="{ standalone: true }"
         [ngModel]="newItemName()"
         (ngModelChange)="newItemName.set($event)"
@@ -55,13 +54,13 @@
       <input
         class="unit"
         type="text"
-        placeholder="eventuel mængde/enhed"
+        [placeholder]="i18n.t('shopping.unitPh')"
         [ngModelOptions]="{ standalone: true }"
         [ngModel]="newItemUnit()"
         (ngModelChange)="newItemUnit.set($event)"
         (keydown)="onKeydown($event)"
       />
-      <button type="button" (click)="addCustom()">Tilføj</button>
+      <button type="button" (click)="addCustom()">{{ i18n.t('shopping.add') }}</button>
     </div>
   </section>
 }

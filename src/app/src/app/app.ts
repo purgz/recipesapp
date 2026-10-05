@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth';
+import { Lang } from './core/i18n';
 
 @Component({
   imports: [RouterLink, RouterOutlet],
@@ -10,4 +11,5 @@ import { AuthService } from './core/auth';
 })
 export class App {
   protected readonly auth = inject(AuthService);
+  protected readonly i18n = inject(Lang);
 }

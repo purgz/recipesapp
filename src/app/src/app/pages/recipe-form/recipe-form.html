@@ -1,18 +1,18 @@
 <div class="form-page">
   @if (!id()) {
     <section class="extract">
-      <h2>Ny opskrift fra link</h2>
+      <h2>{{ i18n.t('form.extractTitle') }}</h2>
       <div class="urlrow">
         <input
           type="url"
-          placeholder="Sæt link her (opskriftsside eller YouTube)…"
+          [placeholder]="i18n.t('form.urlPh')"
           [ngModelOptions]="{ standalone: true }"
           [ngModel]="extractedUrl()"
           (ngModelChange)="extractedUrl.set($event)"
           (keydown)="onUrlInputKeypress($event)"
         />
         <button type="button" [disabled]="extracting()" (click)="extract(extractedUrl())">
-          {{ extracting() ? 'Henter…' : 'Indsæt detaljer' }}
+          {{ extracting() ? i18n.t('form.working') : i18n.t('form.detailsBtn') }}
         </button>
       </div>
       @if (warnings().length) {
@@ -27,70 +27,70 @@
 
   @if (rawText(); as rt) {
     <details class="raw" [open]="true">
-      <summary>@if (rawTextKind() === 'transcript') { Undertekster } @else { Beskrivelse } — genindlæs fra linket og strukturér manuelt</summary>
+      <summary>{{ rawLabel() }}</summary>
       <pre>{{ rt }}</pre>
     </details>
   }
 
   @if (loading()) {
-    <p class="muted">Henter…</p>
+    <p class="muted">{{ i18n.t('form.fetching') }}</p>
   } @else {
   <section class="fields">
     <div class="row">
-      <label for="title">Titel</label>
+      <label for="title">{{ i18n.t('form.title') }}</label>
       <input id="title" type="text" [ngModelOptions]="{ standalone: true }" [ngModel]="title()" (ngModelChange)="title.set($event)" />
     </div>
 
     <div class="row">
-      <label for="desc">Kort beskrivelse</label>
+      <label for="desc">{{ i18n.t('form.desc') }}</label>
       <input id="desc" type="text" [ngModelOptions]="{ standalone: true }" [ngModel]="description()" (ngModelChange)="description.set($event)" />
     </div>
 
     <div class="cols">
       <div class="row grow">
-        <label for="src">Kildelink</label>
+        <label for="src">{{ i18n.t('form.source') }}</label>
         <input id="src" type="url" [ngModelOptions]="{ standalone: true }" [ngModel]="sourceUrl()" (ngModelChange)="sourceUrl.set($event)" />
       </div>
       <div class="row narrow">
-        <label for="servings">Portioner</label>
+        <label for="servings">{{ i18n.t('form.servings') }}</label>
         <input id="servings" type="number" min="1" [ngModelOptions]="{ standalone: true }" [ngModel]="servings()" (ngModelChange)="servings.set($event)" />
       </div>
       <div class="row narrow">
-        <label for="prep">Forbered (min)</label>
+        <label for="prep">{{ i18n.t('form.prep') }}</label>
         <input id="prep" type="number" min="0" [ngModelOptions]="{ standalone: true }" [ngModel]="prepMinutes()" (ngModelChange)="prepMinutes.set($event)" />
       </div>
       <div class="row narrow">
-        <label for="cook">Tilbered (min)</label>
+        <label for="cook">{{ i18n.t('form.cook') }}</label>
         <input id="cook" type="number" min="0" [ngModelOptions]="{ standalone: true }" [ngModel]="cookMinutes()" (ngModelChange)="cookMinutes.set($event)" />
       </div>
     </div>
 
     <div class="row">
-      <label for="tags">Tags (kommasepareret)</label>
-      <input id="tags" type="text" placeholder="f.eks. aftensmad, vegetar, efterår" [ngModelOptions]="{ standalone: true }" [ngModel]="tagsText()" (ngModelChange)="tagsText.set($event)" />
+      <label for="tags">{{ i18n.t('form.tags') }}</label>
+      <input id="tags" type="text" [placeholder]="i18n.t('form.tagsPh')" [ngModelOptions]="{ standalone: true }" [ngModel]="tagsText()" (ngModelChange)="tagsText.set($event)" />
     </div>
 
     <div class="row checkbox">
       <label>
         <input type="checkbox" [ngModelOptions]="{ standalone: true }" [ngModel]="isSeasonalHighlight()" (ngModelChange)="isSeasonalHighlight.set($event)" />
-        Vis med “sæson”-mærke
+        {{ i18n.t('form.seasonal') }}
       </label>
     </div>
 
     <div class="row image">
-      <label for="image">Billede</label>
+      <label for="image">{{ i18n.t('form.image') }}</label>
       <div class="imagebox">
         @if (previewImage(); as url) {
           <img [src]="url" alt="opskriftsbillede" />
         }
         <div class="imagebtns">
-          <label class="btnlike" for="image">Vælg billede</label>
+          <label class="btnlike" for="image">{{ i18n.t('form.chooseImage') }}</label>
           <input id="image" type="file" accept=".jpg,.jpeg,.png,.webp" (change)="onImagePicked($event)" />
           @if (imageUploadedPath()) {
-            <button type="button" class="ghost" (click)="removeImage()">Fjern uploadet billede</button>
+            <button type="button" class="ghost" (click)="removeImage()">{{ i18n.t('form.removeImage') }}</button>
           }
           @if (id() === null) {
-            <span class="muted small">Upload kræver at opskriften er gemt først.</span>
+            <span class="muted small">{{ i18n.t('form.saveFirstUpload') }}</span>
           }
         </div>
       </div>
@@ -98,20 +98,20 @@
   </section>
 
   <section>
-    <h2>Ingredienser</h2>
+    <h2>{{ i18n.t('form.ingredients') }}</h2>
     @for (ing of ingredients(); track $index) {
       <div class="ingrow">
-        <input class="qty" type="number" step="any" placeholder="mængde" [ngModelOptions]="{ standalone: true }" [ngModel]="ing.qty" (ngModelChange)="patchIng($index, 'qty', $event)" />
-        <input class="unit" type="text" placeholder="enhed" [ngModelOptions]="{ standalone: true }" [ngModel]="ing.unit" (ngModelChange)="patchIng($index, 'unit', $event)" />
-        <input class="name" type="text" placeholder="vare" [ngModelOptions]="{ standalone: true }" [ngModel]="ing.name" (ngModelChange)="patchIng($index, 'name', $event)" />
+        <input class="qty" type="number" step="any" [placeholder]="i18n.t('form.qtyPh')" [ngModelOptions]="{ standalone: true }" [ngModel]="ing.qty" (ngModelChange)="patchIng($index, 'qty', $event)" />
+        <input class="unit" type="text" [placeholder]="i18n.t('form.unitPh')" [ngModelOptions]="{ standalone: true }" [ngModel]="ing.unit" (ngModelChange)="patchIng($index, 'unit', $event)" />
+        <input class="name" type="text" [placeholder]="i18n.t('form.namePh')" [ngModelOptions]="{ standalone: true }" [ngModel]="ing.name" (ngModelChange)="patchIng($index, 'name', $event)" />
         <button type="button" class="ghost" (click)="removeIngredient($index)">✕</button>
       </div>
     }
-    <button type="button" class="ghost" (click)="addIngredient()">+ Tilføj ingrediens</button>
+    <button type="button" class="ghost" (click)="addIngredient()">{{ i18n.t('form.addIngredient') }}</button>
   </section>
 
   <section>
-    <h2>Sådan laver du</h2>
+    <h2>{{ i18n.t('form.howTo') }}</h2>
     <ol class="steps">
       @for (step of steps(); track $index) {
         <li>
@@ -120,7 +120,7 @@
         </li>
       }
     </ol>
-    <button type="button" class="ghost" (click)="addStep()">+ Tilføj trin</button>
+    <button type="button" class="ghost" (click)="addStep()">{{ i18n.t('form.addStep') }}</button>
   </section>
 
   @if (error()) {
@@ -129,9 +129,9 @@
 
   <div class="actions">
     <button type="button" [disabled]="saving()" (click)="save()">
-      {{ saving() ? 'Gemmer…' : id() ? 'Gem ændringer' : 'Gem opskrift' }}
+      {{ saving() ? i18n.t('form.saving') : id() ? i18n.t('form.saveChanges') : i18n.t('form.save') }}
     </button>
-    <button type="button" class="ghost" (click)="cancel()">Annullér</button>
+    <button type="button" class="ghost" (click)="cancel()">{{ i18n.t('form.cancel') }}</button>
   </div>
   }
 </div>

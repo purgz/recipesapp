@@ -1,17 +1,19 @@
 <div class="login-card">
-  <h1>Opskriftsbogen</h1>
-  <p class="sub">Log ind med familiens kodeord</p>
+  <h1>{{ i18n.t('login.title') }}</h1>
+  <p class="sub">{{ i18n.t('login.sub') }}</p>
 
   <form (ngSubmit)="submit()">
     <input
       type="password"
-      placeholder="Kodeord"
+      [placeholder]="i18n.t('login.ph')"
       autocomplete="current-password"
       [ngModelOptions]="{ standalone: true }"
       [ngModel]="password()"
       (ngModelChange)="password.set($event)"
     />
-    <button type="submit" [disabled]="busy()">{{ busy() ? 'Logger ind…' : 'Log ind' }}</button>
+    <button type="submit" [disabled]="busy()">
+      {{ busy() ? i18n.t('login.busy') : i18n.t('login.submit') }}
+    </button>
   </form>
 
   @if (error()) {

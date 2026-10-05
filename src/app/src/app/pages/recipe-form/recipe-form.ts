@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RecipesApi } from '../../core/api';
+import { Lang } from '../../core/i18n';
 import type { IngredientEntry, Recipe, RecipeDraft, RecipeInput } from '../../core/models';
 
 @Component({
@@ -14,6 +15,7 @@ export class RecipeForm implements OnInit {
   private readonly api = inject(RecipesApi);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly i18n = inject(Lang);
 
   protected readonly id = signal<string | null>(null);
   protected readonly loading = signal(false);
@@ -70,7 +72,7 @@ export class RecipeForm implements OnInit {
       this.imageUploadedPath.set(r.imageUploadedPath ?? null);
       this.imageOriginalUrl.set(r.imageOriginalUrl ?? null);
     } catch {
-      this.error.set('Kunne ikke hente opskriften.');
+      this.error.set(this.i18n.t('form.loadFail'));
     } finally {
       this.loading.set(false);
     }
@@ -89,7 +91,7 @@ export class RecipeForm implements OnInit {
       );
       this.applyDraft(draft);
     } catch {
-      this.error.set('Udtrækning fejlede — udfyld formularen manuelt.');
+      this.error.set(this.i18n.t('form.extractFail'));
     } finally {
       this.extracting.set(false);
     }
@@ -155,7 +157,7 @@ export class RecipeForm implements OnInit {
       return;
     }
     if (this.id() === null) {
-      this.error.set('Gem opskriften først, for at uploade et billede.');
+      this.error.set(this.i18n.t('form.saveFirstUpload'));
       input.value = '';
       return;
     }
@@ -164,25 +166,25 @@ export class RecipeForm implements OnInit {
         this.imageUploadedPath.set(r.imagePath + '?v=' + Date.now());
         this.error.set('');
       },
-      error: () => this.error.set('Billede-upload fejlede (max 5 MB, jpg/png/webp).'),
+      error: () => this.error.set(this.i18n.t('form.uploadFail')),
     });
     input.value = '';
   }
 
   protected removeImage(): void {
     if (this.id() === null) {
-      this.error.set('Gem opskriften først.');
+      this.error.set(this.i18n.t('form.saveFirstRemove'));
       return;
     }
     this.api.deleteImage(this.id()!).subscribe({
       next: () => this.imageUploadedPath.set(null),
-      error: () => this.error.set('Fejl ved billedslet.'),
+      error: () => this.error.set(this.i18n.t('form.imageDeleteFail')),
     });
   }
 
   protected async save(): Promise<void> {
     if (!this.title().trim()) {
-      this.error.set('Opskriften skal have en titel.');
+      this.error.set(this.i18n.t('form.needTitle'));
       return;
     }
     const input: RecipeInput = {
@@ -213,7 +215,7 @@ export class RecipeForm implements OnInit {
         void this.router.navigate(['/recipes', r.id]);
       }
     } catch {
-      this.error.set('Kunne ikke gemme opskriften.');
+      this.error.set(this.i18n.t('form.saveFail'));
     } finally {
       this.saving.set(false);
     }
@@ -225,6 +227,11 @@ export class RecipeForm implements OnInit {
 
   protected previewImage(): string | null {
     return this.imageUploadedPath() ?? this.imageOriginalUrl();
+  }
+
+  protected rawLabel(): string {
+    const k = this.rawTextKind() === 'transcript' ? 'form.transcript' : 'form.description';
+    return this.i18n.t(k) + ' ' + this.i18n.t('form.rawHint');
   }
 
   protected async onUrlInputKeypress(evt: KeyboardEvent): Promise<void> {

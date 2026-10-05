@@ -5,9 +5,26 @@
 
   input {
     flex: 1;
+    min-width: 0;
     padding: 0.6rem 0.8rem;
     border: 1px solid #d8d4cd;
     border-radius: 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .head {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+      padding: 0.65rem;
+    }
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.7rem;
   }
 }
 
@@ -22,6 +39,8 @@
   }
 
   .chip {
+
+    color: #2d2a26;
     font-size: 0.8rem;
     padding: 0.2rem 0.65rem;
     border-radius: 999px;

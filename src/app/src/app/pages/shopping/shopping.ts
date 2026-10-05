@@ -1,5 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+﻿import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Lang } from '../../core/i18n';
 import { PlanApi, currentMonday, formatDaDate, shiftWeek } from '../../core/plan-api';
 import type { ShoppingList, ShoppingItem } from '../../core/models';
 
@@ -11,6 +12,7 @@ import type { ShoppingList, ShoppingItem } from '../../core/models';
 })
 export class Shopping implements OnInit {
   private readonly planApi = inject(PlanApi);
+  protected readonly i18n = inject(Lang);
 
   protected readonly week = signal(currentMonday());
   protected readonly list = signal<ShoppingList | null>(null);
@@ -32,7 +34,7 @@ export class Shopping implements OnInit {
       );
       this.list.set(l);
     } catch {
-      this.error.set('Kunne ikke hente indkøbslisten.');
+      this.error.set(this.i18n.t('shopping.loadFail'));
     } finally {
       this.busy.set(false);
     }
@@ -40,7 +42,7 @@ export class Shopping implements OnInit {
 
   protected weekLabel(): string {
     const week = this.week();
-    return `${formatDaDate(week)} – ${formatDaDate(shiftWeek(week, 6))}`;
+    return `${formatDaDate(week)} â€“ ${formatDaDate(shiftWeek(week, 6))}`;
   }
 
   protected async prev(): Promise<void> {
@@ -61,7 +63,7 @@ export class Shopping implements OnInit {
       );
       this.list.set(l);
     } catch {
-      this.error.set('Kunne ikke (gen)generere listen.');
+      this.error.set(this.i18n.t('shopping.genFail'));
     } finally {
       this.busy.set(false);
     }
@@ -101,7 +103,7 @@ export class Shopping implements OnInit {
       this.newItemName.set('');
       this.newItemUnit.set('');
     } catch {
-      this.error.set('Fandtes allerede eller fejl.');
+      this.error.set(this.i18n.t('shopping.existsOrError'));
     }
   }
 
@@ -122,3 +124,4 @@ export class Shopping implements OnInit {
     }
   }
 }
+

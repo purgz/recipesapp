@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipesApi } from '../../core/api';
+import { Lang } from '../../core/i18n';
 import {
   PlanApi,
   currentMonday,
@@ -8,8 +9,6 @@ import {
   shiftWeek,
 } from '../../core/plan-api';
 import type { PlanEntry, RecipeSummary } from '../../core/models';
-
-const DAY_NAMES = ['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag', 'søndag'];
 
 @Component({
   selector: 'app-meal-plan',
@@ -20,6 +19,7 @@ const DAY_NAMES = ['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'
 export class MealPlan implements OnInit {
   private readonly planApi = inject(PlanApi);
   private readonly recipesApi = inject(RecipesApi);
+  protected readonly i18n = inject(Lang);
 
   protected readonly week = signal(currentMonday());
   protected readonly entries = signal<PlanEntry[]>([]);
@@ -30,19 +30,14 @@ export class MealPlan implements OnInit {
   protected readonly chooserTag = signal('');
   protected readonly busy = signal(false);
 
-  protected readonly slots = [
-    { slot: 1, label: 'Morgenmad' },
-    { slot: 2, label: 'Frokost' },
-    { slot: 3, label: 'Aftensmad' },
-    { slot: 4, label: 'Ekstra' },
-  ];
+  protected readonly slots = [{ slot: 1 }, { slot: 2 }, { slot: 3 }, { slot: 4 }];
 
   protected readonly days = computed(() => {
     const monday = this.week();
     return Array.from({ length: 7 }, (_, i) => {
       const date = shiftWeek(monday, i);
       return {
-        label: DAY_NAMES[i],
+        label: this.i18n.t(`plan.day.${i}`),
         date,
         dateLabel: formatDaDate(date),
       };
@@ -51,7 +46,7 @@ export class MealPlan implements OnInit {
 
   protected readonly weekLabel = computed(() => {
     const monday = this.week();
-    return `${formatDaDate(monday)} – ${formatDaDate(shiftWeek(monday, 6))} (${this.weekNumber(monday)}. uge)`;
+    return `${formatDaDate(monday)} - ${formatDaDate(shiftWeek(monday, 6))} (${this.weekNumber(monday)}. uge)`;
   });
 
   protected readonly chooserCandidates = computed(() => {

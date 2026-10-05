@@ -3,6 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RecipesApi } from '../../core/api';
+import { Lang } from '../../core/i18n';
 import type { Recipe } from '../../core/models';
 
 @Component({
@@ -15,6 +16,7 @@ export class RecipeDetail implements OnInit {
   private readonly api = inject(RecipesApi);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly i18n = inject(Lang);
 
   protected readonly recipe = signal<Recipe | null>(null);
   protected readonly busy = signal(false);
@@ -38,7 +40,7 @@ export class RecipeDetail implements OnInit {
       const r = await new Promise<Recipe>((res, rej) => this.api.get(id).subscribe({ next: res, error: rej }));
       this.recipe.set(r);
     } catch {
-      this.error.set('Kunne ikke hente opskriften.');
+      this.error.set(this.i18n.t('detail.error'));
     } finally {
       this.busy.set(false);
     }
@@ -69,7 +71,7 @@ export class RecipeDetail implements OnInit {
 
   protected async remove(): Promise<void> {
     const r = this.recipe();
-    if (!r || !window.confirm('Slet opskriften? Den bliver ved i mealplanen, indtil den erstattes.')) {
+    if (!r || !window.confirm(this.i18n.t('detail.confirmDelete'))) {
       return;
     }
     await new Promise<unknown>((res, rej) => this.api.remove(r.id).subscribe({ next: res, error: rej }));

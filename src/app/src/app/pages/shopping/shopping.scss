@@ -9,7 +9,7 @@
   margin-bottom: 1rem;
 
   .weeklabel {
-    min-width: 220px;
+    min-width: 200px;
     text-align: center;
     font-weight: 600;
   }
@@ -17,6 +17,12 @@
   .spacer {
     flex: 1;
   }
+}
+
+.navbtn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.2rem;
 }
 
 .cardlike {
@@ -123,4 +129,27 @@
 .tiny {
   padding: 0 0.4rem;
   font-size: 0.75rem;
+}
+
+@media (max-width: 620px) {
+  .controls {
+    flex-wrap: wrap;
+
+    .weeklabel {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .spacer {
+      display: none;
+    }
+
+    button {
+      flex: 1 0 auto;
+    }
+  }
+
+  .items li .from {
+    display: none;
+  }
 }

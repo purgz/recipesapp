@@ -1,16 +1,14 @@
 @if (busy()) {
-  <p class="muted">Henter…</p>
+  <p class="muted">{{ i18n.t('detail.fetching') }}</p>
 } @else if (error()) {
   <p class="error">{{ error() }}</p>
 } @else if (recipe(); as r) {
   <article class="detail">
     <div class="hero">
-      @if (r; as rr) {
-        @if (rr.imageUrl; as url) {
-          <img [src]="url" alt="" />
-        } @else {
-          <div class="noimg">🍽</div>
-        }
+      @if (r.imageUrl; as url) {
+        <img [src]="url" alt="" />
+      } @else {
+        <div class="noimg">🍽</div>
       }
       <div class="hero-body">
         <h1>{{ r.title }}</h1>
@@ -18,35 +16,35 @@
           <p class="desc">{{ d }}</p>
         }
         <p class="meta">
-          {{ r.servings }} portioner
+          {{ r.servings }} {{ i18n.t('detail.servings') }}
           @if (r.prepMinutes) {
-            · {{ r.prepMinutes }} min forberedelse
+            · {{ r.prepMinutes }} {{ i18n.t('detail.prepFor') }}
           }
           @if (r.cookMinutes) {
-            · {{ r.cookMinutes }} min tilberedning
+            · {{ r.cookMinutes }} {{ i18n.t('detail.cook') }}
           }
         </p>
         <div class="chips">
           @if (r.isSeasonalHighlight) {
-            <span class="chip season">sæson</span>
+            <span class="chip season">{{ i18n.t('list.season') }}</span>
           }
           @for (t of r.tags; track t) {
             <span class="chip">{{ t }}</span>
           }
         </div>
         <div class="btns">
-          <button type="button" (click)="edit()">Rediger</button>
+          <button type="button" (click)="edit()">{{ i18n.t('detail.edit') }}</button>
           @if (r.sourceUrl; as src) {
-            <button type="button" class="ghost" (click)="openSource()">Kilde ↗</button>
+            <button type="button" class="ghost" (click)="openSource()">{{ i18n.t('detail.source') }}</button>
           }
-          <button type="button" class="ghost danger" (click)="remove()">Slet</button>
+          <button type="button" class="ghost danger" (click)="remove()">{{ i18n.t('detail.delete') }}</button>
         </div>
       </div>
     </div>
 
     <div class="cols">
       <section class="ingredients">
-        <h2>Ingredienser</h2>
+        <h2>{{ i18n.t('detail.ingredients') }}</h2>
         <ul>
           @for (i of r.ingredients; track $index) {
             <li>@if (i.qty !== null) { {{ i.qty }} } @if (i.unit) { {{ i.unit }} } {{ i.name }}</li>
@@ -55,7 +53,7 @@
       </section>
 
       <section class="steps">
-        <h2>Sådan laver du</h2>
+        <h2>{{ i18n.t('detail.howTo') }}</h2>
         <ol>
           @for (s of r.steps; track $index) {
             <li>{{ s }}</li>
@@ -65,24 +63,24 @@
     </div>
 
     <section class="comments">
-      <h2>Kommentarer ({{ r.comments.length }})</h2>
+      <h2>{{ i18n.t('detail.comments') }} ({{ r.comments.length }})</h2>
       @for (c of r.comments; track c.id) {
         <div class="comment">
           <div class="body">
             <span class="author">{{ c.author }}</span> ·
-            <time>{{ c.createdAt | date: 'dd MMM yyyy' }}</time>
+            <time>{{ c.createdAt | date: 'dd.MM.yyyy' }}</time>
             <p>{{ c.text }}</p>
           </div>
           <button type="button" class="ghost small" (click)="removeComment(c.id)">✕</button>
         </div>
       } @empty {
-        <p class="muted">Ingen kommentarer endnu.</p>
+        <p class="muted">{{ i18n.t('detail.none') }}</p>
       }
 
       <form class="newcomment">
-        <input type="text" placeholder="Hvem (valgfri)" [(ngModel)]="commentAuthor" name="author" />
-        <input type="text" placeholder="Skriv en note…" [(ngModel)]="commentText" name="text" />
-        <button type="button" (click)="addComment()">Tilføj</button>
+        <input type="text" [placeholder]="i18n.t('detail.authorPh')" [(ngModel)]="commentAuthor" name="author" />
+        <input type="text" [placeholder]="i18n.t('detail.textPh')" [(ngModel)]="commentText" name="text" />
+        <button type="button" (click)="addComment()">{{ i18n.t('detail.addComment') }}</button>
       </form>
     </section>
   </article>

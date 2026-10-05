@@ -1,7 +1,8 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { RecipesApi } from '../../core/api';
-import { MONTH_NAMES, seasonalForMonth } from '../../core/seasonal-produce';
+import { Lang } from '../../core/i18n';
+import { MONTH_NAMES_EN, MONTH_NAMES_DA, seasonalForMonth } from '../../core/seasonal-produce';
 import type { RecipeSummary } from '../../core/models';
 
 @Component({
@@ -13,12 +14,15 @@ import type { RecipeSummary } from '../../core/models';
 export class Seasonal implements OnInit {
   private readonly api = inject(RecipesApi);
   private readonly router = inject(Router);
+  protected readonly i18n = inject(Lang);
 
   protected readonly month = signal(new Date().getMonth() + 1);
-  protected readonly monthNames = MONTH_NAMES;
   protected readonly recipes = signal<RecipeSummary[]>([]);
   protected readonly loading = signal(true);
 
+  protected readonly monthNames = computed(() =>
+    this.i18n.current() === 'da' ? MONTH_NAMES_DA : MONTH_NAMES_EN,
+  );
   protected readonly produce = computed(() => seasonalForMonth(this.month()));
   protected readonly seasonalRecipes = computed(() => this.recipes());
 

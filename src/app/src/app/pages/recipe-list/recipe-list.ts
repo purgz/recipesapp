@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { RecipesApi } from '../../core/api';
+import { Lang } from '../../core/i18n';
 import type { RecipeSummary } from '../../core/models';
 
 @Component({
@@ -13,6 +14,7 @@ import type { RecipeSummary } from '../../core/models';
 export class RecipeList implements OnInit {
   private readonly api = inject(RecipesApi);
   private readonly router = inject(Router);
+  protected readonly i18n = inject(Lang);
 
   protected readonly search = signal('');
   protected readonly activeTag = signal('');
@@ -22,7 +24,10 @@ export class RecipeList implements OnInit {
   protected readonly items = signal<RecipeSummary[]>([]);
 
   async ngOnInit(): Promise<void> {
-    this.api.tags().subscribe((t) => this.tags.set(t));
+    this.api.tags().subscribe({
+      next: (t) => this.tags.set(t),
+      error: () => this.tags.set([]),
+    });
     await this.reload();
   }
 
@@ -35,7 +40,7 @@ export class RecipeList implements OnInit {
       );
       this.items.set(items);
     } catch {
-      this.error.set('Kunne ikke hente opskrifter.');
+      this.error.set(this.i18n.t('list.error'));
     } finally {
       this.busy.set(false);
     }
@@ -56,5 +61,13 @@ export class RecipeList implements OnInit {
 
   protected newFromUrl(): void {
     void this.router.navigate(['/recipes/new']);
+  }
+
+  protected cardTags(r: RecipeSummary): string[] {
+    return (r.tags ?? []).slice(0, 4);
+  }
+
+  protected totalMinutes(r: RecipeSummary): number {
+    return (r.prepMinutes ?? 0) + (r.cookMinutes ?? 0);
   }
 }

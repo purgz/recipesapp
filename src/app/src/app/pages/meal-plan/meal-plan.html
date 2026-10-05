@@ -1,14 +1,14 @@
 <section class="controls">
-  <button type="button" class="ghost" (click)="prevWeek()">‹</button>
+  <button type="button" class="ghost navbtn" (click)="prevWeek()">‹</button>
   <span class="weeklabel">{{ weekLabel() }}</span>
-  <button type="button" class="ghost" (click)="nextWeek()">›</button>
-  <button type="button" class="ghost small" (click)="gotoThisWeek()">Denne uge</button>
+  <button type="button" class="ghost navbtn" (click)="nextWeek()">›</button>
+  <button type="button" class="ghost small" (click)="gotoThisWeek()">{{ i18n.t('plan.thisWeek') }}</button>
 </section>
 
 <div class="grid">
   <div class="colhead"></div>
   @for (s of slots; track s.slot) {
-    <div class="colhead">{{ s.label }}</div>
+    <div class="colhead">{{ i18n.t('plan.slot' + s.slot) }}</div>
   }
 
   @for (d of days(); track d.date) {
@@ -20,7 +20,7 @@
           <button
             type="button"
             class="ghost tiny"
-            title="Fjern"
+            title="{{ i18n.t('plan.remove') }}"
             (click)="removeEntry(d.date, s.slot)"
           >✕</button>
         </div>
@@ -35,12 +35,12 @@
   <div class="overlay" (click)="closeChooser()">
     <div class="chooser" (click)="$event.stopPropagation()">
       <header>
-        <strong>Vælg opskrift</strong>
+        <strong>{{ i18n.t('plan.chooseTitle') }}</strong>
         <button type="button" class="ghost" (click)="closeChooser()">✕</button>
       </header>
       <input
         type="search"
-        placeholder="Filtrér opskrifter…"
+        [placeholder]="i18n.t('plan.filterPh')"
         [ngModelOptions]="{ standalone: true }"
         [ngModel]="chooserSearch()"
         (ngModelChange)="chooserSearch.set($event)"
@@ -63,11 +63,11 @@
             }
             <div>
               <span>{{ r.title }}</span>
-              <span class="muted small">{{ r.tags.join(', ') }}</span>
+              <span class="muted small">{{ (r.tags ?? []).join(', ') }}</span>
             </div>
           </li>
         } @empty {
-          <li class="muted">Ingen match — tilføj opskrifter først.</li>
+          <li class="muted">{{ i18n.t('plan.noMatch') }}</li>
         }
       </ul>
     </div>
@@ -75,5 +75,5 @@
 }
 
 @if (busy()) {
-  <p class="muted">Opdaterer…</p>
+  <p class="muted">{{ i18n.t('plan.updating') }}</p>
 }

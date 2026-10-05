@@ -135,6 +135,8 @@
     margin-bottom: 0.7rem;
 
     .chip {
+
+      color: #2d2a26;
       font-size: 0.78rem;
       padding: 0.18rem 0.6rem;
       border-radius: 999px;
@@ -193,4 +195,42 @@
 }
 .small {
   font-size: 0.85rem;
+}
+
+.navbtn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.2rem;
+}
+
+@media (max-width: 700px) {
+  .controls {
+    flex-wrap: wrap;
+
+    .weeklabel {
+      flex: 1;
+      min-width: 150px;
+      text-align: center;
+    }
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+
+    .colhead {
+      display: none;
+    }
+
+    .dayname {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .cell {
+    min-height: 52px;
+
+    &.filled .title {
+      -webkit-line-clamp: 1;
+    }
+  }
 }

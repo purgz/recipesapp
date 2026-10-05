@@ -1,16 +1,16 @@
 <section class="head">
   <input
     type="search"
-    placeholder="Søg i titler eller tags…"
+    [placeholder]="i18n.t('list.searchPh')"
     [ngModelOptions]="{ standalone: true }"
     [ngModel]="search()"
-    (ngModelChange)="search.set($event)"
+    (ngModelChange)="search.set($event); onSearchChange()"
   />
-  <button type="button" (click)="newFromUrl()">+ Ny opskrift (link)</button>
+  <button type="button" (click)="newFromUrl()">{{ i18n.t('list.newBtn') }}</button>
 </section>
 
 @if (busy()) {
-  <p class="muted">Henter…</p>
+  <p class="muted">{{ i18n.t('list.fetching') }}</p>
 } @else if (error()) {
   <p class="error">{{ error() }}</p>
 }
@@ -43,16 +43,16 @@
       <div class="body">
         <h3>{{ r.title }}</h3>
         <p class="meta">
-          @if (r.cookMinutes || r.prepMinutes) {
-            ⏱ {{ (r.prepMinutes ?? 0) + (r.cookMinutes ?? 0) }} min ·
+          @if (totalMinutes(r)) {
+            ⏱ {{ totalMinutes(r) }} {{ i18n.t('list.min') }} ·
           }
-          {{ r.servings }} ‎pers.
+          {{ r.servings }} {{ i18n.t('list.pers') }}
         </p>
         <div class="chips small">
           @if (r.isSeasonalHighlight) {
-            <span class="chip season">sæson</span>
+            <span class="chip season">{{ i18n.t('list.season') }}</span>
           }
-          @for (t of r.tags.slice(0, 4); track t) {
+          @for (t of cardTags(r); track t) {
             <span class="chip pass">{{ t }}</span>
           }
         </div>
@@ -60,7 +60,7 @@
     </article>
   } @empty {
     @if (!busy()) {
-      <p class="muted">Ingen opskrifter endnu — Indsæt et link ovenfor.</p>
+      <p class="muted">{{ i18n.t('list.none') }}</p>
     }
   }
 </div>
