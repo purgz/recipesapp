@@ -65,6 +65,14 @@ export function toDateOnlyString(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+export function formatDate(
+  iso: string,
+  lang: 'da' | 'en' = 'da',
+  options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' },
+): string {
+  return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'da-DK', options).format(isoDate(iso));
+}
+
 export function formatDaDate(iso: string): string {
-  return new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'short' }).format(isoDate(iso));
+  return formatDate(iso, 'da');
 }

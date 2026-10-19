@@ -25,6 +25,8 @@
   <h3>{{ i18n.t('seasonal.recipes') }}</h3>
   @if (loading()) {
     <p class="muted">{{ i18n.t('list.fetching') }}</p>
+  } @else if (error()) {
+    <p class="error">{{ error() }}</p>
   } @else if (seasonalRecipes().length === 0) {
     <p class="muted">{{ i18n.t('seasonal.none') }}</p>
   } @else {

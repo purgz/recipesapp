@@ -28,11 +28,11 @@ const STRINGS: Record<string, Record<UiLang, string>> = {
     en: 'Server has no household password configured (Household:Password).',
   },
 
-  'list.searchPh': { da: 'Søg i titler eller tags...', en: 'Search titles or tags...' },
+  'list.searchPh': { da: 'Søg i titler, tags eller ingredienser...', en: 'Search titles, tags or ingredients...' },
   'list.newBtn': { da: '+ Ny opskrift (link)', en: '+ New recipe (link)' },
   'list.fetching': { da: 'Henter...', en: 'Loading...' },
   'list.error': { da: 'Kunne ikke hente opskrifter.', en: 'Could not load recipes.' },
-  'list.none': { da: 'Ingen opskrifter endnu - indsæt et link ovenfor.', en: 'No recipes yet - paste a link above.' },
+  'list.none': { da: 'Ingen opskrifter endnu - tilføj en fra et link eller manuelt.', en: 'No recipes yet - add one from a link or manually.' },
   'list.min': { da: 'min', en: 'min' },
   'list.pers': { da: 'pers.', en: 'servs.' },
   'list.season': { da: 'sæson', en: 'in season' },
@@ -49,6 +49,7 @@ const STRINGS: Record<string, Record<UiLang, string>> = {
   'detail.confirmDelete': { da: 'Slet opskriften?', en: 'Delete this recipe?' },
   'detail.addComment': { da: 'Tilføj', en: 'Add' },
   'detail.none': { da: 'Ingen kommentarer endnu.', en: 'No comments yet.' },
+  'detail.commentFail': { da: 'Kunne ikke gemme kommentaren.', en: 'Could not save the comment.' },
   'detail.authorPh': { da: 'Hvem (valgfri)', en: 'Who (optional)' },
   'detail.textPh': { da: 'Skriv en note...', en: 'Write a note...' },
   'detail.fetching': { da: 'Henter...', en: 'Loading...' },
@@ -126,6 +127,8 @@ const STRINGS: Record<string, Record<UiLang, string>> = {
   'shopping.genFail': { da: 'Kunne ikke (gen)generere listen.', en: 'Could not (re)generate the list.' },
   'shopping.meal': { da: 'måltid', en: 'meal' },
   'shopping.meals': { da: 'måltider', en: 'meals' },
+  'shopping.hideDone': { da: 'Skjul købte', en: 'Hide done' },
+  'shopping.showDone': { da: 'Vis købte', en: 'Show done' },
 
   'seasonal.title': { da: 'Sæson i Danmark', en: 'In season in Denmark' },
   'seasonal.sub': {
@@ -136,6 +139,10 @@ const STRINGS: Record<string, Record<UiLang, string>> = {
   'seasonal.none': {
     da: 'Ingen inspiration endnu - markér en opskrift med "sæson"-mærket i redigeringsfeltet.',
     en: 'Nothing yet - mark a recipe as in-season in the edit form.',
+  },
+  'seasonal.loadFail': {
+    da: 'Kunne ikke hente sæson-opskrifter.',
+    en: 'Could not load in-season recipes.',
   },
 };
 

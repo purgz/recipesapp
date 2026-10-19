@@ -3,6 +3,12 @@
   <span class="weeklabel">{{ weekLabel() }}</span>
   <button type="button" class="ghost navbtn" (click)="next()">›</button>
   <span class="spacer"></span>
+  @if (list(); as l) {
+    <span class="muted small">{{ checkedCount() }}/{{ l.items.length }}</span>
+    <button type="button" class="ghost small" (click)="showChecked.set(!showChecked())">
+      {{ showChecked() ? i18n.t('shopping.hideDone') : i18n.t('shopping.showDone') }}
+    </button>
+  }
   <button type="button" class="ghost small" [disabled]="busy()" (click)="renew()">
     {{ i18n.t('shopping.generate') }}
   </button>
@@ -16,7 +22,7 @@
   <p class="muted cardlike">{{ i18n.t('shopping.noneYet') }}</p>
 } @else if (list(); as l) {
   <ul class="items">
-    @for (i of l.items; track i.id) {
+    @for (i of visibleItems(); track i.id) {
       <li [class.done]="i.checked">
         <label>
           <input type="checkbox" [checked]="i.checked" (change)="toggle(i)" />
@@ -49,6 +55,17 @@
         [ngModelOptions]="{ standalone: true }"
         [ngModel]="newItemName()"
         (ngModelChange)="newItemName.set($event)"
+        (keydown)="onKeydown($event)"
+      />
+      <input
+        class="qty"
+        type="number"
+        step="any"
+        min="0"
+        [placeholder]="i18n.t('form.qtyPh')"
+        [ngModelOptions]="{ standalone: true }"
+        [ngModel]="newItemQty()"
+        (ngModelChange)="newItemQty.set($event)"
         (keydown)="onKeydown($event)"
       />
       <input

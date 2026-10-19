@@ -1,6 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Subject, catchError, debounceTime, merge, of, startWith, switchMap, tap } from 'rxjs';
 import { RecipesApi } from '../../core/api';
 import { Lang } from '../../core/i18n';
 import type { RecipeSummary } from '../../core/models';
@@ -14,6 +16,7 @@ import type { RecipeSummary } from '../../core/models';
 export class RecipeList implements OnInit {
   private readonly api = inject(RecipesApi);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly i18n = inject(Lang);
 
   protected readonly search = signal('');
@@ -23,36 +26,51 @@ export class RecipeList implements OnInit {
   protected readonly error = signal('');
   protected readonly items = signal<RecipeSummary[]>([]);
 
-  async ngOnInit(): Promise<void> {
+  /** Keystrokes are debounced; tag clicks apply immediately. */
+  private readonly searchChanges = new Subject<void>();
+  private readonly tagChanges = new Subject<void>();
+
+  ngOnInit(): void {
     this.api.tags().subscribe({
       next: (t) => this.tags.set(t),
       error: () => this.tags.set([]),
     });
-    await this.reload();
-  }
 
-  protected async reload(): Promise<void> {
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const items = await new Promise<RecipeSummary[]>((res, rej) =>
-        this.api.list(this.search(), this.activeTag() || undefined).subscribe({ next: res, error: rej }),
-      );
-      this.items.set(items);
-    } catch {
-      this.error.set(this.i18n.t('list.error'));
-    } finally {
-      this.busy.set(false);
-    }
+    // switchMap cancels the previous request, so a slow response for an old
+    // query can never overwrite the results of a newer one.
+    merge(
+      this.searchChanges.pipe(debounceTime(250)),
+      this.tagChanges,
+    )
+      .pipe(
+        startWith(void 0),
+        tap(() => {
+          this.busy.set(true);
+          this.error.set('');
+        }),
+        switchMap(() =>
+          this.api.list(this.search(), this.activeTag() || undefined).pipe(
+            catchError(() => {
+              this.error.set(this.i18n.t('list.error'));
+              return of([] as RecipeSummary[]);
+            }),
+          ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((items) => {
+        this.items.set(items);
+        this.busy.set(false);
+      });
   }
 
   protected toggleTag(t: string): void {
     this.activeTag.update((cur) => (cur === t ? '' : t));
-    void this.reload();
+    this.tagChanges.next();
   }
 
   protected onSearchChange(): void {
-    void this.reload();
+    this.searchChanges.next();
   }
 
   protected open(id: string): void {

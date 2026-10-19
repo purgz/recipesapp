@@ -1,11 +1,11 @@
 <header class="topbar">
   <a routerLink="/recipes" class="brand">🍲 {{ i18n.t('app.name') }}</a>
   <nav>
-    <a routerLink="/recipes">{{ i18n.t('nav.recipes') }}</a>
-    <a routerLink="/plan">{{ i18n.t('nav.plan') }}</a>
-    <a routerLink="/shopping">{{ i18n.t('nav.shopping') }}</a>
-    <a routerLink="/seasonal">{{ i18n.t('nav.seasonal') }}</a>
-    <a routerLink="/recipes/new">{{ i18n.t('nav.new') }}</a>
+    <a routerLink="/recipes" routerLinkActive="active">{{ i18n.t('nav.recipes') }}</a>
+    <a routerLink="/plan" routerLinkActive="active">{{ i18n.t('nav.plan') }}</a>
+    <a routerLink="/shopping" routerLinkActive="active">{{ i18n.t('nav.shopping') }}</a>
+    <a routerLink="/seasonal" routerLinkActive="active">{{ i18n.t('nav.seasonal') }}</a>
+    <a routerLink="/recipes/new" routerLinkActive="active">{{ i18n.t('nav.new') }}</a>
   </nav>
   @if (auth.authed()) {
     <span class="lang" (click)="i18n.toggle()" title="DA/EN">{{ i18n.current() === 'da' ? 'EN' : 'DA' }}</span>

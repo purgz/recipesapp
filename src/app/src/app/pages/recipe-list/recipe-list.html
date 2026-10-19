@@ -9,10 +9,12 @@
   <button type="button" (click)="newFromUrl()">{{ i18n.t('list.newBtn') }}</button>
 </section>
 
-@if (busy()) {
-  <p class="muted">{{ i18n.t('list.fetching') }}</p>
-} @else if (error()) {
+@if (error()) {
   <p class="error">{{ error() }}</p>
+}
+
+@if (busy() && !items().length) {
+  <p class="muted">{{ i18n.t('list.fetching') }}</p>
 }
 
 @if (tags().length) {
@@ -32,7 +34,14 @@
 
 <div class="grid">
   @for (r of items(); track r.id) {
-    <article class="card" (click)="open(r.id)">
+    <article
+      class="card"
+      role="button"
+      tabindex="0"
+      (click)="open(r.id)"
+      (keydown.enter)="open(r.id)"
+      (keydown.space)="open(r.id); $event.preventDefault()"
+    >
       <div class="thumb">
         @if (r.imageUrl; as url) {
           <img [src]="url" alt="" loading="lazy" />

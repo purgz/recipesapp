@@ -15,13 +15,13 @@
     <div class="dayname">{{ d.label }} <span class="date">{{ d.dateLabel }}</span></div>
     @for (s of slots; track s.slot) {
       @if (entryAt(d.date, s.slot); as e) {
-        <div class="cell filled">
+        <div class="cell filled" (click)="openChooser(d.date, s.slot)">
           <span class="title">{{ e.recipeTitle }}</span>
           <button
             type="button"
             class="ghost tiny"
             title="{{ i18n.t('plan.remove') }}"
-            (click)="removeEntry(d.date, s.slot)"
+            (click)="$event.stopPropagation(); removeEntry(d.date, s.slot)"
           >✕</button>
         </div>
       } @else {

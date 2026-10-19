@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RecipesApi } from '../../core/api';
@@ -21,6 +21,23 @@ export class RecipeDetail implements OnInit {
   protected readonly recipe = signal<Recipe | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  protected readonly commentError = signal('');
+
+  /** Portions the ingredient amounts are currently scaled to. */
+  protected readonly portions = signal(4);
+
+  protected readonly scale = computed(() => {
+    const recipe = this.recipe();
+    const portions = this.portions();
+    return recipe && recipe.servings > 0 && portions > 0 ? portions / recipe.servings : 1;
+  });
+
+  protected readonly scaledIngredients = computed(() =>
+    (this.recipe()?.ingredients ?? []).map((ing) => ({
+      ...ing,
+      qty: ing.qty === null ? null : ing.qty * this.scale(),
+    })),
+  );
 
   protected commentAuthor = '';
   protected commentText = '';
@@ -39,6 +56,7 @@ export class RecipeDetail implements OnInit {
     try {
       const r = await new Promise<Recipe>((res, rej) => this.api.get(id).subscribe({ next: res, error: rej }));
       this.recipe.set(r);
+      this.portions.set(r.servings);
     } catch {
       this.error.set(this.i18n.t('detail.error'));
     } finally {
@@ -51,13 +69,18 @@ export class RecipeDetail implements OnInit {
     if (!r || !this.commentText.trim()) {
       return;
     }
-    await new Promise<unknown>((res, rej) =>
-      this.api
-        .addComment(r.id, this.commentAuthor.trim() || 'husholdning', this.commentText.trim())
-        .subscribe({ next: res, error: rej }),
-    );
-    this.commentText = '';
-    await this.reload();
+    try {
+      await new Promise<unknown>((res, rej) =>
+        this.api
+          .addComment(r.id, this.commentAuthor.trim() || 'husholdning', this.commentText.trim())
+          .subscribe({ next: res, error: rej }),
+      );
+      this.commentText = '';
+      this.commentError.set('');
+      await this.reload();
+    } catch {
+      this.commentError.set(this.i18n.t('detail.commentFail'));
+    }
   }
 
   protected async removeComment(commentId: string): Promise<void> {
@@ -83,6 +106,14 @@ export class RecipeDetail implements OnInit {
     if (r) {
       void this.router.navigate(['/recipes', r.id, 'edit']);
     }
+  }
+
+  protected adjustPortions(delta: number): void {
+    this.portions.update((p) => Math.min(99, Math.max(1, p + delta)));
+  }
+
+  protected fmtQty(q: number | null): string {
+    return q === null ? '' : String(Math.round(q * 100) / 100);
   }
 
   protected openSource(): void {

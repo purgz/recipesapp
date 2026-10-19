@@ -1,7 +1,7 @@
 ﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Lang } from '../../core/i18n';
-import { PlanApi, currentMonday, formatDaDate, shiftWeek } from '../../core/plan-api';
+import { PlanApi, currentMonday, formatDate, shiftWeek } from '../../core/plan-api';
 import { RecipesApi } from '../../core/api';
 import type { IngredientEntry, PlanEntry, Recipe, ShoppingList, ShoppingItem } from '../../core/models';
 
@@ -24,6 +24,16 @@ export class Shopping implements OnInit {
   protected readonly error = signal('');
   protected readonly newItemName = signal('');
   protected readonly newItemUnit = signal('');
+  protected readonly newItemQty = signal<number | null>(null);
+  protected readonly showChecked = signal(true);
+
+  /** Hide already-bought lines so the remaining shopping trip stays short. */
+  protected readonly visibleItems = computed(() => {
+    const items = this.list()?.items ?? [];
+    return this.showChecked() ? items : items.filter((i) => !i.checked);
+  });
+
+  protected readonly checkedCount = computed(() => (this.list()?.items ?? []).filter((i) => i.checked).length);
 
   async ngOnInit(): Promise<void> {
     await this.reload();
@@ -86,7 +96,7 @@ export class Shopping implements OnInit {
       if (!groups.has(e.recipeId)) {
         groups.set(e.recipeId, { title: recipe.title, ingredients: recipe.ingredients, when: [] });
       }
-      groups.get(e.recipeId)!.when.push(`${formatDaDate(e.date)}, ${slotLabel(e.slot)}`);
+      groups.get(e.recipeId)!.when.push(`${formatDate(e.date, this.i18n.current())}, ${slotLabel(e.slot)}`);
     }
     return [...groups.entries()]
       .map(([id, g]) => ({ id, ...g }))
@@ -95,7 +105,7 @@ export class Shopping implements OnInit {
 
   protected weekLabel(): string {
     const week = this.week();
-    return `${formatDaDate(week)} - ${formatDaDate(shiftWeek(week, 6))}`;
+    return `${formatDate(week, this.i18n.current())} - ${formatDate(shiftWeek(week, 6), this.i18n.current())}`;
   }
 
   protected async prev(): Promise<void> {
@@ -149,12 +159,13 @@ export class Shopping implements OnInit {
     try {
       const l = await new Promise<ShoppingList>((res, rej) =>
         this.planApi
-          .addCustom(this.week(), name, this.newItemUnit().trim() || null)
+          .addCustom(this.week(), name, this.newItemUnit().trim() || null, this.newItemQty())
           .subscribe({ next: res, error: rej }),
       );
       this.list.set(l);
       this.newItemName.set('');
       this.newItemUnit.set('');
+      this.newItemQty.set(null);
     } catch {
       this.error.set(this.i18n.t('shopping.existsOrError'));
     }

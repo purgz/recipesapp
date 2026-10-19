@@ -55,6 +55,19 @@
       .meta {
         color: #8b867e;
         font-size: 0.9rem;
+
+        .servings {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          margin-right: 0.15rem;
+
+          button {
+            padding: 0.05rem 0.45rem;
+            font-size: 0.85rem;
+            line-height: 1.2;
+          }
+        }
       }
     }
   }

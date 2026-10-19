@@ -5,7 +5,7 @@ import { Lang } from '../../core/i18n';
 import {
   PlanApi,
   currentMonday,
-  formatDaDate,
+  formatDate,
   shiftWeek,
 } from '../../core/plan-api';
 import type { PlanEntry, RecipeSummary } from '../../core/models';
@@ -15,6 +15,7 @@ import type { PlanEntry, RecipeSummary } from '../../core/models';
   imports: [FormsModule],
   templateUrl: './meal-plan.html',
   styleUrl: './meal-plan.scss',
+  host: { '(document:keydown.escape)': 'closeChooser()' },
 })
 export class MealPlan implements OnInit {
   private readonly planApi = inject(PlanApi);
@@ -39,14 +40,16 @@ export class MealPlan implements OnInit {
       return {
         label: this.i18n.t(`plan.day.${i}`),
         date,
-        dateLabel: formatDaDate(date),
+        dateLabel: formatDate(date, this.i18n.current()),
       };
     });
   });
 
   protected readonly weekLabel = computed(() => {
     const monday = this.week();
-    return `${formatDaDate(monday)} - ${formatDaDate(shiftWeek(monday, 6))} (${this.weekNumber(monday)}. uge)`;
+    const range = `${formatDate(monday, this.i18n.current())} - ${formatDate(shiftWeek(monday, 6), this.i18n.current())}`;
+    const week = this.weekNumber(monday);
+    return this.i18n.current() === 'da' ? `${range} (${week}. uge)` : `${range} (week ${week})`;
   });
 
   protected readonly chooserCandidates = computed(() => {

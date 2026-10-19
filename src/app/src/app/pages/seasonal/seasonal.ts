@@ -19,6 +19,7 @@ export class Seasonal implements OnInit {
   protected readonly month = signal(new Date().getMonth() + 1);
   protected readonly recipes = signal<RecipeSummary[]>([]);
   protected readonly loading = signal(true);
+  protected readonly error = signal('');
 
   protected readonly monthNames = computed(() =>
     this.i18n.current() === 'da' ? MONTH_NAMES_DA : MONTH_NAMES_EN,
@@ -27,11 +28,16 @@ export class Seasonal implements OnInit {
   protected readonly seasonalRecipes = computed(() => this.recipes());
 
   async ngOnInit(): Promise<void> {
-    const all = await new Promise<RecipeSummary[]>((res, rej) =>
-      this.api.list().subscribe({ next: res, error: rej }),
-    );
-    this.recipes.set(all.filter((r) => r.isSeasonalHighlight));
-    this.loading.set(false);
+    try {
+      const all = await new Promise<RecipeSummary[]>((res, rej) =>
+        this.api.list().subscribe({ next: res, error: rej }),
+      );
+      this.recipes.set(all.filter((r) => r.isSeasonalHighlight));
+    } catch {
+      this.error.set(this.i18n.t('seasonal.loadFail'));
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   protected setMonth(m: number): void {

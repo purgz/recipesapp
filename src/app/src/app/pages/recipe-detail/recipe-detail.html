@@ -16,7 +16,11 @@
           <p class="desc">{{ d }}</p>
         }
         <p class="meta">
-          {{ r.servings }} {{ i18n.t('detail.servings') }}
+          <span class="servings">
+            <button type="button" class="ghost" (click)="adjustPortions(-1)" [disabled]="portions() <= 1">−</button>
+            {{ portions() }} {{ i18n.t('detail.servings') }}
+            <button type="button" class="ghost" (click)="adjustPortions(1)" [disabled]="portions() >= 99">+</button>
+          </span>
           @if (r.prepMinutes) {
             · {{ r.prepMinutes }} {{ i18n.t('detail.prepFor') }}
           }
@@ -46,8 +50,8 @@
       <section class="ingredients">
         <h2>{{ i18n.t('detail.ingredients') }}</h2>
         <ul>
-          @for (i of r.ingredients; track $index) {
-            <li>@if (i.qty !== null) { {{ i.qty }} } @if (i.unit) { {{ i.unit }} } {{ i.name }}</li>
+          @for (i of scaledIngredients(); track $index) {
+            <li>@if (i.qty !== null) { {{ fmtQty(i.qty) }} } @if (i.unit) { {{ i.unit }} } {{ i.name }}</li>
           }
         </ul>
       </section>
@@ -75,6 +79,10 @@
         </div>
       } @empty {
         <p class="muted">{{ i18n.t('detail.none') }}</p>
+      }
+
+      @if (commentError()) {
+        <p class="error">{{ commentError() }}</p>
       }
 
       <form class="newcomment">
