@@ -5,7 +5,7 @@ using System.Xml;
 namespace RecipeApp.Api.Extraction;
 
 /// <summary>schema.org/Recipe JSON-LD → RecipeDraft</summary>
-public partial class SchemaOrgRecipeExtractor(IHttpClientFactory httpFactory) : IRecipeExtractor
+public partial class SchemaOrgRecipeExtractor(ScrapeFetcher fetcher) : IRecipeExtractor
 {
     public int Priority => 20;
 
@@ -17,22 +17,14 @@ public partial class SchemaOrgRecipeExtractor(IHttpClientFactory httpFactory) : 
     {
         var draft = new RecipeDraft { SourceUrl = url };
 
-        string html;
-        using (var resp = await httpFactory.CreateClient("scrape").GetAsync(url, ct))
+        var fetched = await fetcher.FetchAsync(url, ct);
+        if (fetched.Html is null)
         {
-            if (!resp.IsSuccessStatusCode)
-            {
-                draft.Warnings.Add($"Hentning mislykkedes (HTTP {(int)resp.StatusCode}).");
-                return draft;
-            }
-            html = await resp.Content.ReadAsStringAsync(ct);
-        }
-
-        if (html.Length == 0)
-        {
-            draft.Warnings.Add("Siden returnerede intet indhold.");
+            draft.Warnings.Add(fetched.Error!);
             return draft;
         }
+
+        var html = fetched.Html;
 
         var nodes = JsonLd.FindRecipeNodes(html);
         if (nodes.Count == 0)

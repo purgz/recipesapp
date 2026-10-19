@@ -1,7 +1,10 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
@@ -28,10 +31,23 @@ builder.Services
         c.DefaultRequestHeaders.AcceptLanguage.ParseAdd("da-DK,da;q=0.9,en;q=0.8");
     });
 
+builder.Services.AddScoped<ScrapeFetcher>();
 builder.Services.AddScoped<IRecipeExtractor, SchemaOrgRecipeExtractor>();
 builder.Services.AddScoped<IRecipeExtractor, MicrodataRecipeExtractor>();
 builder.Services.AddScoped<ExtractionPipeline>();
 builder.Services.AddScoped<ShoppingListService>();
+
+// The household password is the only credential — throttle brute-force attempts.
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddFixedWindowLimiter("login", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+});
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -66,6 +82,27 @@ builder.Services.AddAuthorization(o =>
 
 var app = builder.Build();
 
+// Apply EF Core migrations on startup so a fresh volume/container works
+// immediately (the deployed image has no dotnet-ef CLI available).
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var migrationLog = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Migrations");
+    for (var attempt = 1; ; attempt++)
+    {
+        try
+        {
+            db.Database.Migrate();
+            break;
+        }
+        catch (Exception ex) when (attempt < 5)
+        {
+            migrationLog.LogWarning(ex, "Database migration attempt {Attempt} failed; retrying in 3s", attempt);
+            await Task.Delay(TimeSpan.FromSeconds(3));
+        }
+    }
+}
+
 app.UseStaticFiles();
 
 var imagesPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "images");
@@ -77,6 +114,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
@@ -91,7 +129,7 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, LoginRequest req, IConfig
             statusCode: 500);
     }
 
-    if (string.IsNullOrEmpty(req.Password) || !string.Equals(req.Password, password, StringComparison.Ordinal))
+    if (string.IsNullOrEmpty(req.Password) || !PasswordEquals(req.Password, password))
     {
         return Results.Unauthorized();
     }
@@ -100,7 +138,7 @@ app.MapPost("/api/auth/login", async (HttpContext ctx, LoginRequest req, IConfig
         CookieAuthenticationDefaults.AuthenticationScheme);
     await ctx.SignInAsync(new ClaimsPrincipal(identity));
     return Results.NoContent();
-}).AllowAnonymous();
+}).AllowAnonymous().RequireRateLimiting("login");
 
 app.MapPost("/api/auth/logout", async (HttpContext ctx) =>
 {
@@ -129,6 +167,12 @@ app.MapGet("/api/tags", async (AppDbContext db, CancellationToken ct) =>
 
 app.MapFallback("/api/{**_}", () => Results.NotFound());
 app.MapFallbackToFile("index.html").AllowAnonymous();
+
+// Compare digests so the comparison is constant-time regardless of input length.
+static bool PasswordEquals(string supplied, string expected) =>
+    CryptographicOperations.FixedTimeEquals(
+        SHA256.HashData(Encoding.UTF8.GetBytes(supplied)),
+        SHA256.HashData(Encoding.UTF8.GetBytes(expected)));
 
 app.Run();
 

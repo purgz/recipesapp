@@ -21,15 +21,19 @@ public static partial class IngredientParser
     ];
 
     [GeneratedRegex(
-        @"^(?<qty>\d+[.,]\d+|\d+\s+\d+\s*/\s*\d+|\d+\s*/\s*\d+|[½¼¾⅓⅔])?\s*(?<unit>[a-zæøåA-ZÆØÅ]+\.?)?\s*(?<name>\S.*|)$",
+        @"^(?<qty>\d+\s+\d+\s*/\s*\d+|\d+\s*/\s*\d+|\d+\s*[½¼¾⅓⅔]|\d+[.,]\d+|\d+|[½¼¾⅓⅔])?\s*(?<unit>[a-zæøåA-ZÆØÅ]+\.?)?\s*(?<name>\S.*|)$",
         RegexOptions.ExplicitCapture)]
     private static partial Regex Line();
 
-    [GeneratedRegex(@"^(\d+)\s*[-–~]\s*\d+\s*", RegexOptions.ExplicitCapture)]
+    /// <summary>"3½", "1 ½" — a whole number immediately followed by a unicode fraction.</summary>
+    [GeneratedRegex(@"^(?<whole>\d+)\s*(?<frac>[½¼¾⅓⅔])$", RegexOptions.ExplicitCapture)]
+    private static partial Regex MixedUnicodeFraction();
+
+    [GeneratedRegex(@"^(?<lo>\d+)\s*[-–~]\s*\d+\s*", RegexOptions.ExplicitCapture)]
     private static partial Regex Range();
 
     /// <summary>"(180 g)", "(2.6 lb)", "(~4 pieces)" — parens that only hold numbers/units.</summary>
-    [GeneratedRegex(@"\(\s*[~≈]?\s*[\d.,/½¼¾\s]+(?:g|kg|mg|ml|dl|cl|l|oz|lbs|lb|floz|fl oz|tsp|tbsp|cups?)\b\.?\s*\)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\(\s*[~≈]?\s*[\d.,/½¼¾\s]+(?:g|kg|mg|ml|dl|cl|l|grams?|kilograms?|millilit(?:er|re)s?|oz|lbs?|fl\.?\s?oz|tsp|tbsp|cups?|pieces?|pcs?)\b\.?\s*\)", RegexOptions.IgnoreCase)]
     private static partial Regex ConversionParen();
 
     /// <summary>RecipeTin style "1.3 kg / 2.6 lb chuck beef" — imperial tail right after the unit.</summary>
@@ -51,7 +55,7 @@ public static partial class IngredientParser
         var range = Range().Match(text);
         if (range.Success)
         {
-            text = range.Groups[1].Value + " " + text[range.Length..].TrimStart();
+            text = range.Groups["lo"].Value + " " + text[range.Length..].TrimStart();
         }
 
         var m = Line().Match(text);
@@ -88,6 +92,7 @@ public static partial class IngredientParser
         s = InlineImperial().Replace(s, " ");
         s = s.Replace(", ,", ",").Replace("(,", "(").Replace(", )", ")");
         s = System.Text.RegularExpressions.Regex.Replace(s, @"\s+", " ").Trim(' ', ',');
+        s = System.Text.RegularExpressions.Regex.Replace(s, @"\s+([,.;:])", "$1");
         s = System.Text.RegularExpressions.Regex.Replace(s, @"\(\s*\)", " ");
         return s.Trim(' ', ',');
     }
@@ -103,15 +108,15 @@ public static partial class IngredientParser
         // Unicode fractions
         if (raw.Length == 1 && "½¼¾⅓⅔".Contains(raw, StringComparison.Ordinal))
         {
-            return raw switch
-            {
-                "½" => 0.5,
-                "¼" => 0.25,
-                "¾" => 0.75,
-                "⅓" => 1.0 / 3,
-                "⅔" => 2.0 / 3,
-                _ => null,
-            };
+            return FractionValue(raw[0]);
+        }
+
+        // "3½" / "1 ½" — whole number + unicode fraction
+        var mixedUnicode = MixedUnicodeFraction().Match(raw);
+        if (mixedUnicode.Success &&
+            double.TryParse(mixedUnicode.Groups["whole"].Value, out var mixedWhole))
+        {
+            return mixedWhole + FractionValue(mixedUnicode.Groups["frac"].Value[0]);
         }
 
         // "1 1/2", "1 1/2" mixed number
@@ -138,6 +143,16 @@ public static partial class IngredientParser
 
         return null;
     }
+
+    private static double? FractionValue(char symbol) => symbol switch
+    {
+        '½' => 0.5,
+        '¼' => 0.25,
+        '¾' => 0.75,
+        '⅓' => 1.0 / 3,
+        '⅔' => 2.0 / 3,
+        _ => null,
+    };
 
     private static bool TryParseFraction(string raw, out double value)
     {

@@ -36,7 +36,19 @@ public static class RecipeEndpoints
         }
         if (!string.IsNullOrWhiteSpace(search))
         {
-            q = q.Where(r => EF.Functions.Like(r.Title, $"%{search.Trim()}%"));
+            // The UI promises "search titles or tags" — also match description
+            // and ingredient names so households can find e.g. "porrer".
+            // Ingredients are stored as JSON where non-ASCII is \u-escaped, so
+            // search both the raw and the escaped representation.
+            var term = search.Trim();
+            var like = $"%{term}%";
+            var jsonLike = $"%{System.Text.Json.JsonEncodedText.Encode(term)}%";
+            q = q.Where(r =>
+                EF.Functions.Like(r.Title, like) ||
+                (r.Description != null && EF.Functions.Like(r.Description, like)) ||
+                r.Tags.Any(rt => EF.Functions.Like(rt.Tag.Name, like)) ||
+                EF.Functions.Like(r.IngredientsJson, like) ||
+                EF.Functions.Like(r.IngredientsJson, jsonLike));
         }
 
         var items = await q
@@ -59,6 +71,7 @@ public static class RecipeEndpoints
     private static async Task<IResult> Get(AppDbContext db, Guid id, CancellationToken ct)
     {
         var r = await db.Recipes.AsNoTracking()
+            .AsSplitQuery()
             .Include(x => x.Tags).ThenInclude(rt => rt.Tag)
             .Include(x => x.Comments)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -122,13 +135,41 @@ public static class RecipeEndpoints
         await UpsertTags(db, recipe, input.Tags, ct);
 
         await db.SaveChangesAsync(ct);
+        await RemoveOrphanTags(db, ct);
         return Results.Ok(ToDto(recipe));
     }
 
-    private static async Task<IResult> Delete(AppDbContext db, Guid id, CancellationToken ct)
+    private static async Task<IResult> Delete(
+        AppDbContext db, IWebHostEnvironment env, ShoppingListService shopping,
+        Guid id, CancellationToken ct)
     {
-        var rows = await db.Recipes.Where(r => r.Id == id).ExecuteDeleteAsync(ct);
-        return rows == 0 ? Results.NotFound() : Results.NoContent();
+        var recipe = await db.Recipes.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
+        if (recipe is null)
+        {
+            return Results.NotFound();
+        }
+
+        // Remember which weeks referenced this recipe before the FK cascade
+        // removes the plan entries, so existing shopping lists stay accurate.
+        var weeks = await db.MealPlanEntries
+            .Where(e => e.RecipeId == id)
+            .Select(e => e.Date)
+            .ToListAsync(ct);
+
+        await db.Recipes.Where(r => r.Id == id).ExecuteDeleteAsync(ct);
+
+        DeleteImageFile(env, recipe.ImageUploadedPath);
+        await RemoveOrphanTags(db, ct);
+
+        foreach (var monday in weeks.Select(ShoppingListService.StartOfWeek).Distinct())
+        {
+            if (await db.ShoppingLists.AnyAsync(l => l.WeekStart == monday, ct))
+            {
+                await shopping.EnsureGenerated(monday, ct);
+            }
+        }
+
+        return Results.NoContent();
     }
 
     private static async Task<IResult> UploadImage(AppDbContext db, IWebHostEnvironment env, Guid id, IFormFile file, CancellationToken ct)
@@ -221,6 +262,13 @@ public static class RecipeEndpoints
         return rows == 0 ? Results.NotFound() : Results.NoContent();
     }
 
+    private static async Task RemoveOrphanTags(AppDbContext db, CancellationToken ct)
+    {
+        // Unused tags otherwise linger as filter chips forever (scraped imports
+        // bring a lot of one-off English keywords).
+        await db.Tags.Where(t => !t.Recipes.Any()).ExecuteDeleteAsync(ct);
+    }
+
     private static async Task UpsertTags(AppDbContext db, Recipe recipe, IEnumerable<string>? tagNames, CancellationToken ct)
     {
         if (tagNames is null)
@@ -255,9 +303,7 @@ public static class RecipeEndpoints
         r.PrepMinutes,
         r.CookMinutes,
         DeserializeIngredients(r.IngredientsJson),
-        JsonDocument.Parse(r.StepsJson).RootElement.EnumerateArray()
-            .Select(s => s.ToString())
-            .ToList(),
+        DeserializeSteps(r.StepsJson),
         r.Tags.Select(rt => rt.Tag.Name).OrderBy(t => t).ToList(),
         r.IsSeasonalHighlight,
         r.Comments
@@ -273,6 +319,18 @@ public static class RecipeEndpoints
         {
             var parsed = JsonSerializer.Deserialize<List<IngredientEntry>>(json);
             return parsed ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static List<string> DeserializeSteps(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json) ?? [];
         }
         catch (JsonException)
         {

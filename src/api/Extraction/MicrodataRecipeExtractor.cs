@@ -9,7 +9,7 @@ namespace RecipeApp.Api.Extraction;
 /// &lt;li class="ingredient-header"&gt; don't carry itemprop and are ignored
 /// automatically. Steps may live in nested &lt;p&gt;/&lt;li&gt; children.
 /// </summary>
-public class MicrodataRecipeExtractor(IHttpClientFactory httpFactory) : IRecipeExtractor
+public class MicrodataRecipeExtractor(ScrapeFetcher fetcher) : IRecipeExtractor
 {
     public int Priority => 30;
 
@@ -21,25 +21,15 @@ public class MicrodataRecipeExtractor(IHttpClientFactory httpFactory) : IRecipeE
     {
         var draft = new RecipeDraft { SourceUrl = url };
 
-        string html;
-        using (var resp = await httpFactory.CreateClient("scrape").GetAsync(url, ct))
+        var fetched = await fetcher.FetchAsync(url, ct);
+        if (fetched.Html is null)
         {
-            if (!resp.IsSuccessStatusCode)
-            {
-                draft.Warnings.Add($"Hentning mislykkedes (HTTP {(int)resp.StatusCode}).");
-                return draft;
-            }
-            html = await resp.Content.ReadAsStringAsync(ct);
-        }
-
-        if (html.Length == 0)
-        {
-            draft.Warnings.Add("Siden returnerede intet indhold.");
+            draft.Warnings.Add(fetched.Error!);
             return draft;
         }
 
         var doc = new HtmlDocument();
-        doc.LoadHtml(html);
+        doc.LoadHtml(fetched.Html);
 
         var scope = doc.DocumentNode
             .SelectNodes("//*[contains(translate(@itemtype,'RECIPE','recipe'),'recipe')]")

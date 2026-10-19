@@ -5,8 +5,8 @@ namespace RecipeApp.Api.Extraction;
 /// at the first result with usable data. If none succeed it returns an empty
 /// draft whose Warnings carry each extractor's failure reason — the UI opens
 /// the manual edit form either way.
-/// The LLM extractor (milestone 6) is just another IRecipeExtractor registered
-/// conditionally on ExtractLlm:Enabled — this class never references it directly.
+/// Extraction is deterministic (no LLM by design); extractors share one
+/// ScrapeFetcher so the page is downloaded at most once per request.
 /// </summary>
 public class ExtractionPipeline(IEnumerable<IRecipeExtractor> extractors, ILogger<ExtractionPipeline> log)
 {

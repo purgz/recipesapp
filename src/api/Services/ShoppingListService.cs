@@ -30,11 +30,23 @@ public class ShoppingListService(AppDbContext db)
             .Where(e => e.Date >= monday && e.Date <= monday.AddDays(6))
             .ToListAsync(ct);
 
-        var oldChecked = await CheckedByWeek(monday, ct);
-
         var list = await db.ShoppingLists
             .Include(s => s.Items)
             .FirstOrDefaultAsync(s => s.WeekStart == monday, ct);
+
+        // Checked state and hand-added items are user input — carry them across
+        // regenerations instead of dropping them when the meal plan changes.
+        var oldChecked = new Dictionary<string, bool>(StringComparer.Ordinal);
+        if (list is not null)
+        {
+            foreach (var existing in list.Items)
+            {
+                // Assignment (not Add) tolerates legacy rows that differ only
+                // by case, which the case-sensitive unique index allows.
+                oldChecked[Key(existing.Name, existing.Unit)] = existing.Checked;
+            }
+        }
+        var manual = list?.Items.Where(i => i.AddedManually).ToList() ?? [];
 
         if (list is null)
         {
@@ -43,12 +55,26 @@ public class ShoppingListService(AppDbContext db)
         }
         else
         {
-            list.Items.Clear();
+            foreach (var generated in list.Items.Where(i => !i.AddedManually).ToList())
+            {
+                list.Items.Remove(generated);
+            }
         }
         list.GeneratedAt = DateTime.UtcNow;
 
         foreach (var (name, unit, qty, titles, meals) in Aggregate(entries))
         {
+            var manualMatch = manual.FirstOrDefault(m => Key(m.Name, m.Unit) == Key(name, unit));
+            if (manualMatch is not null)
+            {
+                // Keep the user's own wording/quantity, but enrich it with the
+                // recipes that need it so it still shows up in the grouped view.
+                manualMatch.Quantity ??= qty;
+                manualMatch.RecipeTitlesJson = JsonSerializer.Serialize(titles, JsonOpts);
+                manualMatch.MealCount = meals;
+                continue;
+            }
+
             list.Items.Add(new ShoppingListItem
             {
                 Name = name,
@@ -56,7 +82,7 @@ public class ShoppingListService(AppDbContext db)
                 Quantity = qty,
                 RecipeTitlesJson = JsonSerializer.Serialize(titles, JsonOpts),
                 MealCount = meals,
-                Checked = oldChecked.GetValueOrDefault($"{name}|{unit ?? ""}", false),
+                Checked = oldChecked.GetValueOrDefault(Key(name, unit), false),
                 AddedManually = false,
             });
         }
@@ -65,17 +91,9 @@ public class ShoppingListService(AppDbContext db)
         return monday;
     }
 
-    private async Task<Dictionary<string, bool>> CheckedByWeek(DateOnly monday, CancellationToken ct)
-    {
-        var list = await db.ShoppingLists.AsNoTracking()
-            .Include(s => s.Items)
-            .FirstOrDefaultAsync(s => s.WeekStart == monday, ct);
-        if (list is null)
-        {
-            return [];
-        }
-        return list.Items.ToDictionary(i => $"{i.Name}|{i.Unit ?? ""}", i => i.Checked, StringComparer.Ordinal);
-    }
+    /// <summary>Normalized aggregation key: name+unit, case/whitespace/trailing-dot insensitive.</summary>
+    private static string Key(string name, string? unit) =>
+        $"{name.Trim().ToLowerInvariant()}|{(unit ?? "").Trim().TrimEnd('.').ToLowerInvariant()}";
 
     public static DateOnly StartOfWeek(DateOnly any)
     {
@@ -106,7 +124,7 @@ public class ShoppingListService(AppDbContext db)
                 {
                     continue;
                 }
-                var key = $"{name.ToLowerInvariant()}|{(ing.Unit ?? "").ToLowerInvariant().TrimEnd('.')}";
+                var key = Key(name, ing.Unit);
                 if (!buckets.TryGetValue(key, out var bucket))
                 {
                     bucket = [];
