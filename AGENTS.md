@@ -26,7 +26,7 @@ No video/YouTube support and NO LLM (user decision) - link pasting only.
 - `src/app/` — Angular app; `proxy.conf.json` for dev
 - `deploy/` — VM runtime: `docker-compose.yml` + `Caddyfile` + `.env.example` (`.env` on VM, never committed)
 - `Dockerfile` (root, multi-stage: Angular → wwwroot, dotnet publish, single process) + `.dockerignore`
-- `.github/workflows/build-push-image.yml` — builds `linux/arm64` image on push to main → GHCR
+- `.github/workflows/build-push-image.yml` — builds multi-arch (`linux/amd64` + `linux/arm64`) images on push to main → GHCR, then deploys to the VM
 - `scripts/backup.sh` — nightly tarball (+ optional Azure Blob upload); cron wiring documented in-file
 - `AGENTS.md` — this file
 
@@ -51,8 +51,8 @@ No video/YouTube support and NO LLM (user decision) - link pasting only.
 
 ## Deployment
 
-- Target: Oracle Cloud free Ampere A1 (ARM64). GitHub Actions builds a `linux/arm64` image → GHCR; VM pulls and runs `docker compose up -d`.
+- Target: Oracle Cloud free tier. GitHub Actions builds a multi-arch (`linux/amd64` + `linux/arm64`) image → GHCR; VM pulls and runs `docker compose up -d`. Multi-arch because the free tier comes in both AMD x86 and Ampere A1 ARM shapes.
 - Compose services: `caddy` (TLS + reverse proxy `api:8080`, subdomain `recipes.<domain>` with auto-HTTPS) and `api` (SQLite + uploaded images on one named data volume). No LLM — tiny footprint, safe on the always-free tier.
 - Gotcha: ports 80/443 must be opened TWICE on Oracle — VCN subnet security list AND instance security list.
 - Oracle may reclaim idle free-tier instances: nightly cron backs up SQLite DB + `App_Data/images` (tarball → Azure Blob, user's existing account). Nothing on the VM is unreproducible except backups.
-- Fallback host if reclaimed: Hetzner ~€4/mo, same compose file; also maintain Docker image for `linux/amd64` if switching.
+- Fallback host if reclaimed: Hetzner ~€4/mo, same compose file; the image is already published for both `linux/amd64` and `linux/arm64`.
