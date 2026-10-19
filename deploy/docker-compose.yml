@@ -11,7 +11,7 @@ services:
       - caddy_config:/config
 
   api:
-    image: ghcr.io/${GHCR_REPO:?set GHCR_REPO in .env}:latest
+    image: ghcr.io/${GHCR_REPO:?set GHCR_REPO in .env}:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: http://+:8080
