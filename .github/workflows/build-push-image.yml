@@ -84,9 +84,14 @@ jobs:
           GROQ_MODEL: ${{ vars.GROQ_MODEL }}
         run: |
           repo_lc="${GHCR_REPO,,}"
-          ssh ubuntu@"$SSH_HOST" bash -s -- "$repo_lc" "$IMAGE_TAG" "$GROQ_KEY" "$GROQ_MODEL" <<'REMOTE'
+          ssh ubuntu@"$SSH_HOST" bash -s -- "$repo_lc" "$IMAGE_TAG" "${GROQ_KEY:--}" "${GROQ_MODEL:--}" <<'REMOTE'
           set -euo pipefail
-          repo="$1"; tag="$2"; groq_key="$3"; groq_model="$4"
+          repo="${1:?missing repo}"; tag="${2:?missing tag}"
+          groq_key="${3:-}"; groq_model="${4:-}"
+          # "-" is the placeholder for an unset optional value; SSH drops
+          # genuinely empty arguments, which would shift the positions.
+          if [ "$groq_key" = "-" ]; then groq_key=""; fi
+          if [ "$groq_model" = "-" ]; then groq_model=""; fi
           cd /opt/recipeapp
           pw=""
           if [ -f .env ]; then
