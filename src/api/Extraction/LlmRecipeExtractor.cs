@@ -22,8 +22,8 @@ public partial class LlmRecipeExtractor(
 {
     public const string DraftWarning = "AI-udtrukket via Groq – kontrollér indholdet.";
 
-    private const int MaxInputChars = 16_000;
-    private const int MaxOutputTokens = 1200;
+    private const int MaxInputChars = 12_000;
+    private const int MaxOutputTokens = 2_500;
 
     private static readonly Lock AttemptsLock = new();
     private static readonly Queue<DateTimeOffset> Attempts = new();
@@ -110,7 +110,17 @@ public partial class LlmRecipeExtractor(
     private async Task<string> CallGroqAsync(string text, CancellationToken ct)
     {
         var tokenParam = "max_tokens";
-        var response = await PostAsync(text, structured: true, tokenParam, ct);
+        var reasoningEffort = true;
+        var response = await PostAsync(text, structured: true, tokenParam, reasoningEffort, ct);
+
+        // Older/alias models may not know reasoning_effort; drop it and retry.
+        if (await RejectsAsync(response, "reasoning_effort"))
+        {
+            response.Dispose();
+            reasoningEffort = false;
+            log.LogInformation("Groq rejected reasoning_effort; retrying without it");
+            response = await PostAsync(text, structured: true, tokenParam, reasoningEffort, ct);
+        }
 
         // Groq rejects `max_tokens` for some reasoning models; retry with the
         // newer name instead of failing outright.
@@ -119,14 +129,23 @@ public partial class LlmRecipeExtractor(
             response.Dispose();
             tokenParam = "max_completion_tokens";
             log.LogInformation("Groq rejected max_tokens; retrying with {Param}", tokenParam);
-            response = await PostAsync(text, structured: true, tokenParam, ct);
+            response = await PostAsync(text, structured: true, tokenParam, reasoningEffort, ct);
         }
 
         if (await RejectsAsync(response, "response_format", "json_schema"))
         {
             response.Dispose();
             log.LogInformation("Groq model {Model} rejected json_schema; retrying with json_object", Options.ModelValue);
-            response = await PostAsync(text, structured: false, tokenParam, ct);
+            response = await PostAsync(text, structured: false, tokenParam, reasoningEffort, ct);
+        }
+
+        // Strict validation fails with an empty failed_generation when the
+        // generation is truncated; json_object mode tolerates that better.
+        if (await RejectsAsync(response, "json_validate_failed", "Failed to validate JSON"))
+        {
+            response.Dispose();
+            log.LogWarning("Groq could not validate the strict schema; retrying with json_object");
+            response = await PostAsync(text, structured: false, tokenParam, reasoningEffort, ct);
         }
 
         using (response)
@@ -155,7 +174,8 @@ public partial class LlmRecipeExtractor(
         }
     }
 
-    private async Task<HttpResponseMessage> PostAsync(string text, bool structured, string tokenParam, CancellationToken ct)
+    private async Task<HttpResponseMessage> PostAsync(
+        string text, bool structured, string tokenParam, bool reasoningEffort, CancellationToken ct)
     {
         var payload = new Dictionary<string, object?>
         {
@@ -181,6 +201,13 @@ public partial class LlmRecipeExtractor(
                 },
             }
             : new { type = "json_object" };
+
+        // GPT-OSS models spend completion budget on hidden reasoning; without
+        // this the JSON can be truncated before it is emitted.
+        if (reasoningEffort && Options.ModelValue.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase))
+        {
+            payload["reasoning_effort"] = "low";
+        }
 
         var json = JsonSerializer.Serialize(payload);
         using var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
