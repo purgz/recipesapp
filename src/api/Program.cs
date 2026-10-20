@@ -40,12 +40,12 @@ builder.Services.Configure<GroqOptions>(builder.Configuration.GetSection("Groq")
 builder.Services.AddHttpClient<LlmRecipeExtractor>((sp, http) =>
 {
     var groq = sp.GetRequiredService<IOptions<GroqOptions>>().Value;
-    http.BaseAddress = new Uri(groq.BaseUrl.TrimEnd('/') + "/");
+    http.BaseAddress = new Uri(groq.BaseUrl.Trim().TrimEnd('/') + "/");
     http.Timeout = TimeSpan.FromSeconds(groq.TimeoutSeconds);
     if (!string.IsNullOrWhiteSpace(groq.ApiKey))
     {
         http.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", groq.ApiKey);
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", groq.ApiKeyValue);
     }
 });
 builder.Services.AddScoped<IRecipeExtractor>(sp => sp.GetRequiredService<LlmRecipeExtractor>());
@@ -101,10 +101,12 @@ var app = builder.Build();
 // One startup line makes it obvious from the container logs whether the
 // optional LLM fallback is wired up (the key itself is never logged).
 var groqSettings = app.Services.GetRequiredService<IOptions<GroqOptions>>().Value;
+var groqKey = groqSettings.ApiKeyValue;
 app.Logger.LogInformation(
-    "LLM fallback {State} (model {Model})",
+    "LLM fallback {State} (model {Model}, key format ok: {KeyFormatOk})",
     groqSettings.Enabled ? "enabled" : "disabled",
-    groqSettings.Model);
+    groqSettings.ModelValue,
+    groqKey.Length > 0 && groqKey.StartsWith("gsk_", StringComparison.Ordinal));
 
 // Apply EF Core migrations on startup so a fresh volume/container works
 // immediately (the deployed image has no dotnet-ef CLI available).

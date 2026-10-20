@@ -116,7 +116,7 @@ public partial class LlmRecipeExtractor(
         if (await RejectsAsync(response, "response_format", "json_schema"))
         {
             response.Dispose();
-            log.LogInformation("Groq model {Model} rejected json_schema; retrying with json_object", Options.Model);
+            log.LogInformation("Groq model {Model} rejected json_schema; retrying with json_object", Options.ModelValue);
             response = await PostAsync(text, structured: false, tokenParam, ct);
         }
 
@@ -150,7 +150,7 @@ public partial class LlmRecipeExtractor(
     {
         var payload = new Dictionary<string, object?>
         {
-            ["model"] = Options.Model,
+            ["model"] = Options.ModelValue,
             ["temperature"] = 0,
             [tokenParam] = MaxOutputTokens,
             ["messages"] = new object[]

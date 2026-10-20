@@ -20,4 +20,9 @@ public class GroqOptions
     public int MaxAttemptsPerHour { get; set; } = 10;
 
     public bool Enabled => !string.IsNullOrWhiteSpace(ApiKey);
+
+    /// <summary>Trimmed key; secrets pasted into GitHub often carry a trailing newline.</summary>
+    public string ApiKeyValue => (ApiKey ?? string.Empty).Trim();
+
+    public string ModelValue => string.IsNullOrWhiteSpace(Model) ? "openai/gpt-oss-120b" : Model.Trim();
 }
