@@ -72,10 +72,17 @@ public partial class LlmRecipeExtractor(
             draft.Warnings.Add($"AI-udtræk tog for lang tid (>{Options.TimeoutSeconds}s). Udfyld manuelt.");
             return draft;
         }
+        catch (HttpRequestException ex)
+        {
+            log.LogWarning(ex, "Groq extraction failed for {Url}", url);
+            // Surface the provider's reason in the form; the key is never included.
+            draft.Warnings.Add($"AI-udtræk fejlede: {Truncate(ex.Message, 240)}");
+            return draft;
+        }
         catch (Exception ex)
         {
             log.LogWarning(ex, "Groq extraction failed for {Url}", url);
-            draft.Warnings.Add("AI-udtræk fejlede. Udfyld manuelt.");
+            draft.Warnings.Add($"AI-udtræk fejlede ({ex.GetType().Name}): {Truncate(ex.Message, 200)}");
             return draft;
         }
 
@@ -93,12 +100,24 @@ public partial class LlmRecipeExtractor(
 
     private async Task<string> CallGroqAsync(string text, CancellationToken ct)
     {
-        var response = await PostAsync(text, structured: true, ct);
-        if (IsStructuredOutputRejection(response))
+        var tokenParam = "max_tokens";
+        var response = await PostAsync(text, structured: true, tokenParam, ct);
+
+        // Groq rejects `max_tokens` for some reasoning models; retry with the
+        // newer name instead of failing outright.
+        if (await RejectsAsync(response, "max_tokens"))
+        {
+            response.Dispose();
+            tokenParam = "max_completion_tokens";
+            log.LogInformation("Groq rejected max_tokens; retrying with {Param}", tokenParam);
+            response = await PostAsync(text, structured: true, tokenParam, ct);
+        }
+
+        if (await RejectsAsync(response, "response_format", "json_schema"))
         {
             response.Dispose();
             log.LogInformation("Groq model {Model} rejected json_schema; retrying with json_object", Options.Model);
-            response = await PostAsync(text, structured: false, ct);
+            response = await PostAsync(text, structured: false, tokenParam, ct);
         }
 
         using (response)
@@ -127,13 +146,13 @@ public partial class LlmRecipeExtractor(
         }
     }
 
-    private Task<HttpResponseMessage> PostAsync(string text, bool structured, CancellationToken ct)
+    private Task<HttpResponseMessage> PostAsync(string text, bool structured, string tokenParam, CancellationToken ct)
     {
         var payload = new Dictionary<string, object?>
         {
             ["model"] = Options.Model,
             ["temperature"] = 0,
-            ["max_tokens"] = MaxOutputTokens,
+            [tokenParam] = MaxOutputTokens,
             ["messages"] = new object[]
             {
                 new { role = "system", content = SystemPrompt },
@@ -249,9 +268,15 @@ public partial class LlmRecipeExtractor(
             .Select(x => x.GetString()!);
     }
 
-    private static bool IsStructuredOutputRejection(HttpResponseMessage response) =>
-        (int)response.StatusCode == 400 &&
-        response.Content.ReadAsStringAsync().GetAwaiter().GetResult().Contains("response_format", StringComparison.OrdinalIgnoreCase);
+    private static async Task<bool> RejectsAsync(HttpResponseMessage response, params string[] needles)
+    {
+        if ((int)response.StatusCode != 400)
+        {
+            return false;
+        }
+        var body = await response.Content.ReadAsStringAsync();
+        return needles.Any(n => body.Contains(n, StringComparison.OrdinalIgnoreCase));
+    }
 
     private bool TryReserveAttempt()
     {

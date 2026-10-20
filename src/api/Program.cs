@@ -98,6 +98,14 @@ builder.Services.AddAuthorization(o =>
 
 var app = builder.Build();
 
+// One startup line makes it obvious from the container logs whether the
+// optional LLM fallback is wired up (the key itself is never logged).
+var groqSettings = app.Services.GetRequiredService<IOptions<GroqOptions>>().Value;
+app.Logger.LogInformation(
+    "LLM fallback {State} (model {Model})",
+    groqSettings.Enabled ? "enabled" : "disabled",
+    groqSettings.Model);
+
 // Apply EF Core migrations on startup so a fresh volume/container works
 // immediately (the deployed image has no dotnet-ef CLI available).
 using (var scope = app.Services.CreateScope())
