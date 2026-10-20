@@ -21,8 +21,8 @@ export class PlanApi {
   }
 
   /** Preview only — nothing is saved until applyEntries is called. */
-  suggest(week: string, slot: number = SLOT_DINNER) {
-    return this.http.post<SuggestPlanResponse>('/api/plan/suggest', { week, slot });
+  suggest(week: string, slots: number[] = [SLOT_DINNER]) {
+    return this.http.post<SuggestPlanResponse>('/api/plan/suggest', { week, slots });
   }
 
   applyEntries(entries: { date: string; slot: number; recipeId: string }[]) {

@@ -104,6 +104,13 @@ const STRINGS: Record<string, Record<UiLang, string>> = {
   'plan.updating': { da: 'Opdaterer...', en: 'Updating...' },
   'plan.suggest': { da: 'Foreslå uge (AI)', en: 'Suggest week (AI)' },
   'plan.suggesting': { da: 'AI laver en madplan...', en: 'AI is planning the week...' },
+  'plan.suggestFor': { da: 'Foreslå til:', en: 'Suggest for:' },
+  'plan.suggestHint': {
+    da: 'Klik for at ændre, eller træk for at flytte.',
+    en: 'Click to change, or drag to move.',
+  },
+  'plan.chooseSuggestion': { da: 'Vælg opskrift til forslaget', en: 'Choose recipe for the suggestion' },
+  'plan.removeSuggestion': { da: 'Fjern fra forslaget', en: 'Remove from suggestion' },
   'plan.suggestAi': { da: 'AI-forslag klar – gennemse og anvend.', en: 'AI suggestion ready - review and apply.' },
   'plan.suggestFallback': { da: 'Forslag klar (lavet uden AI).', en: 'Suggestion ready (generated without AI).' },
   'plan.suggestApplied': { da: 'Forslaget er lagt ind i ugen.', en: 'The suggestion has been applied to the week.' },

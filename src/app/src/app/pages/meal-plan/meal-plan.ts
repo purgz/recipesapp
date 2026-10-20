@@ -26,10 +26,13 @@ export class MealPlan implements OnInit {
   protected readonly entries = signal<PlanEntry[]>([]);
   protected readonly recipes = signal<RecipeSummary[]>([]);
   protected readonly allTags = signal<string[]>([]);
-  protected readonly chooser = signal<{ date: string; slot: number } | null>(null);
+  protected readonly chooser = signal<{ date: string; slot: number; mode: 'plan' | 'suggestion' } | null>(null);
   protected readonly chooserSearch = signal('');
   protected readonly chooserTag = signal('');
   protected readonly busy = signal(false);
+
+  /** Slots the "suggest week" button should fill. */
+  protected readonly suggestedSlots = signal<number[]>([3]);
 
   /** AI/deterministic week suggestion — previewed, not saved until applied. */
   protected readonly suggestions = signal<Map<string, SuggestedPlanEntry>>(new Map());
@@ -37,6 +40,10 @@ export class MealPlan implements OnInit {
   protected readonly suggestWarning = signal('');
   protected readonly suggestApplied = signal(false);
   protected readonly suggesting = signal(false);
+
+  /** Native drag-and-drop state (entries persist, suggestions stay local). */
+  protected readonly dragging = signal<{ kind: 'entry' | 'suggestion'; date: string; slot: number } | null>(null);
+  private lastDragAt = 0;
 
   protected readonly slots = [{ slot: 1 }, { slot: 2 }, { slot: 3 }, { slot: 4 }];
 
@@ -95,8 +102,12 @@ export class MealPlan implements OnInit {
     return this.entries().find((e) => e.date === date && e.slot === slot && e.recipeId);
   }
 
-  protected openChooser(date: string, slot: number): void {
-    this.chooser.set({ date, slot });
+  protected openChooser(date: string, slot: number, mode: 'plan' | 'suggestion' = 'plan'): void {
+    // A drop fires a click afterwards in some browsers; ignore that one.
+    if (Date.now() - this.lastDragAt < 250) {
+      return;
+    }
+    this.chooser.set({ date, slot, mode });
     this.chooserSearch.set('');
     this.chooserTag.set('');
   }
@@ -111,19 +122,44 @@ export class MealPlan implements OnInit {
       return;
     }
     this.closeChooser();
-    await new Promise<unknown>((res, rej) =>
-      this.planApi
-        .putEntry(target.date, target.slot, recipeId)
-        .subscribe({ next: res, error: rej }),
-    );
+
+    if (target.mode === 'suggestion') {
+      const recipe = this.recipes().find((r) => r.id === recipeId);
+      if (!recipe) {
+        return;
+      }
+      const map = new Map(this.suggestions());
+      map.set(`${target.date}|${target.slot}`, {
+        date: target.date,
+        slot: target.slot,
+        recipeId,
+        recipeTitle: recipe.title,
+        prepMinutes: recipe.prepMinutes,
+        cookMinutes: recipe.cookMinutes,
+      });
+      this.suggestions.set(map);
+      return;
+    }
+
+    await this.put(target.date, target.slot, recipeId);
     await this.reload();
   }
 
   protected async removeEntry(date: string, slot: number): Promise<void> {
-    await new Promise<unknown>((res, rej) =>
+    await this.del(date, slot);
+    await this.reload();
+  }
+
+  private put(date: string, slot: number, recipeId: string): Promise<unknown> {
+    return new Promise<unknown>((res, rej) =>
+      this.planApi.putEntry(date, slot, recipeId).subscribe({ next: res, error: rej }),
+    );
+  }
+
+  private del(date: string, slot: number): Promise<unknown> {
+    return new Promise<unknown>((res, rej) =>
       this.planApi.deleteEntry(date, slot).subscribe({ next: res, error: rej }),
     );
-    await this.reload();
   }
 
   protected async prevWeek(): Promise<void> {
@@ -156,13 +192,30 @@ export class MealPlan implements OnInit {
     return this.suggestions().size > 0;
   }
 
+  protected toggleSuggestedSlot(slot: number): void {
+    this.suggestedSlots.update((current) => {
+      const next = current.includes(slot)
+        ? current.filter((s) => s !== slot)
+        : [...current, slot].sort((a, b) => a - b);
+      return next.length > 0 ? next : current;
+    });
+  }
+
+  protected removeSuggestion(date: string, slot: number): void {
+    const map = new Map(this.suggestions());
+    map.delete(`${date}|${slot}`);
+    this.suggestions.set(map);
+  }
+
   protected async suggestWeek(): Promise<void> {
     this.suggesting.set(true);
     this.suggestWarning.set('');
     this.suggestApplied.set(false);
+    this.suggestions.set(new Map());
+    this.suggestSource.set('');
     try {
       const res = await new Promise<SuggestPlanResponse>((resolve, reject) =>
-        this.planApi.suggest(this.week()).subscribe({ next: resolve, error: reject }),
+        this.planApi.suggest(this.week(), this.suggestedSlots()).subscribe({ next: resolve, error: reject }),
       );
       const map = new Map<string, SuggestedPlanEntry>();
       for (const entry of res.entries) {
@@ -202,6 +255,81 @@ export class MealPlan implements OnInit {
     this.suggestions.set(new Map());
     this.suggestSource.set('');
     this.suggestWarning.set('');
+  }
+
+  protected isDragging(kind: 'entry' | 'suggestion', date: string, slot: number): boolean {
+    const current = this.dragging();
+    return current?.kind === kind && current.date === date && current.slot === slot;
+  }
+
+  protected startDrag(event: DragEvent, kind: 'entry' | 'suggestion', date: string, slot: number): void {
+    this.dragging.set({ kind, date, slot });
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      // Firefox only starts a drag when some data is set.
+      event.dataTransfer.setData('text/plain', `${kind}|${date}|${slot}`);
+    }
+  }
+
+  protected allowDrop(event: DragEvent): void {
+    if (!this.dragging()) {
+      return;
+    }
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  protected endDrag(): void {
+    this.lastDragAt = Date.now();
+    this.dragging.set(null);
+  }
+
+  protected async dropOn(event: DragEvent, date: string, slot: number): Promise<void> {
+    event.preventDefault();
+    const source = this.dragging();
+    this.endDrag();
+    if (!source || (source.date === date && source.slot === slot)) {
+      return;
+    }
+
+    // Do not mix previews with saved entries.
+    if (source.kind === 'suggestion' && this.entryAt(date, slot)) {
+      return;
+    }
+    if (source.kind === 'entry' && this.suggestionAt(date, slot)) {
+      return;
+    }
+
+    if (source.kind === 'suggestion') {
+      const map = new Map(this.suggestions());
+      const from = map.get(`${source.date}|${source.slot}`);
+      if (!from) {
+        return;
+      }
+      const target = map.get(`${date}|${slot}`);
+      map.delete(`${source.date}|${source.slot}`);
+      if (target) {
+        map.set(`${source.date}|${source.slot}`, { ...target, date: source.date, slot: source.slot });
+      }
+      map.set(`${date}|${slot}`, { ...from, date, slot });
+      this.suggestions.set(map);
+      return;
+    }
+
+    const fromEntry = this.entryAt(source.date, source.slot);
+    if (!fromEntry?.recipeId) {
+      return;
+    }
+    const targetEntry = this.entryAt(date, slot);
+    await this.put(date, slot, fromEntry.recipeId);
+    if (targetEntry?.recipeId) {
+      await this.put(source.date, source.slot, targetEntry.recipeId);
+    } else {
+      await this.del(source.date, source.slot);
+    }
+    await this.reload();
   }
 
   private resetSuggestionState(): void {

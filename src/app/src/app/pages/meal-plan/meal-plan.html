@@ -16,13 +16,28 @@
 }
 @if (hasSuggestions()) {
   <div class="suggestbar">
-    <span>{{ i18n.t(suggestSource() === 'ai' ? 'plan.suggestAi' : 'plan.suggestFallback') }}</span>
+    <span>
+      {{ i18n.t(suggestSource() === 'ai' ? 'plan.suggestAi' : 'plan.suggestFallback') }}
+      <span class="muted small">{{ i18n.t('plan.suggestHint') }}</span>
+    </span>
     <span class="actions">
       <button type="button" (click)="applySuggestions()">{{ i18n.t('plan.apply') }}</button>
       <button type="button" class="ghost" (click)="cancelSuggestions()">{{ i18n.t('plan.cancel') }}</button>
     </span>
   </div>
 }
+
+<section class="slotpick">
+  <span class="slotlabel">{{ i18n.t('plan.suggestFor') }}</span>
+  @for (s of slots; track s.slot) {
+    <button
+      type="button"
+      class="chip"
+      [class.on]="suggestedSlots().includes(s.slot)"
+      (click)="toggleSuggestedSlot(s.slot)"
+    >{{ i18n.t('plan.slot' + s.slot) }}</button>
+  }
+</section>
 
 <div class="grid">
   <div class="colhead"></div>
@@ -34,7 +49,17 @@
     <div class="dayname">{{ d.label }} <span class="date">{{ d.dateLabel }}</span></div>
     @for (s of slots; track s.slot) {
       @if (entryAt(d.date, s.slot); as e) {
-        <div class="cell filled" (click)="openChooser(d.date, s.slot)">
+        <div
+          class="cell filled"
+          draggable="true"
+          (dragstart)="startDrag($event, 'entry', d.date, s.slot)"
+          (dragend)="endDrag()"
+          (dragover)="allowDrop($event)"
+          (drop)="dropOn($event, d.date, s.slot)"
+          [class.dragging]="isDragging('entry', d.date, s.slot)"
+          [class.droptarget]="dragging()?.kind === 'entry'"
+          (click)="openChooser(d.date, s.slot)"
+        >
           <span class="title">{{ e.recipeTitle }}</span>
           <button
             type="button"
@@ -45,12 +70,34 @@
         </div>
       } @else {
         @if (suggestionAt(d.date, s.slot); as sg) {
-          <div class="cell suggested" (click)="openChooser(d.date, s.slot)">
+          <div
+            class="cell suggested"
+            draggable="true"
+            (dragstart)="startDrag($event, 'suggestion', d.date, s.slot)"
+            (dragend)="endDrag()"
+            (dragover)="allowDrop($event)"
+            (drop)="dropOn($event, d.date, s.slot)"
+            [class.dragging]="isDragging('suggestion', d.date, s.slot)"
+            [class.droptarget]="dragging()?.kind === 'suggestion'"
+            (click)="openChooser(d.date, s.slot, 'suggestion')"
+          >
             <span class="title">{{ sg.recipeTitle }}</span>
             <span class="aibadge">AI</span>
+            <button
+              type="button"
+              class="ghost tiny"
+              title="{{ i18n.t('plan.removeSuggestion') }}"
+              (click)="$event.stopPropagation(); removeSuggestion(d.date, s.slot)"
+            >✕</button>
           </div>
         } @else {
-          <div class="cell empty" (click)="openChooser(d.date, s.slot)">+</div>
+          <div
+            class="cell empty"
+            (click)="openChooser(d.date, s.slot, hasSuggestions() ? 'suggestion' : 'plan')"
+            (dragover)="allowDrop($event)"
+            (drop)="dropOn($event, d.date, s.slot)"
+            [class.droptarget]="dragging() !== null"
+          >+</div>
         }
       }
     }
@@ -61,7 +108,7 @@
   <div class="overlay" (click)="closeChooser()">
     <div class="chooser" (click)="$event.stopPropagation()">
       <header>
-        <strong>{{ i18n.t('plan.chooseTitle') }}</strong>
+        <strong>{{ i18n.t(target.mode === 'suggestion' ? 'plan.chooseSuggestion' : 'plan.chooseTitle') }}</strong>
         <button type="button" class="ghost" (click)="closeChooser()">✕</button>
       </header>
       <input
