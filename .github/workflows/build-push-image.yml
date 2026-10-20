@@ -150,4 +150,8 @@ jobs:
             exit 1
           fi
           echo "API healthy."
+          # The API's startup summary lives in the container log, not in this
+          # job; print the relevant lines so config problems are visible here.
+          sudo docker compose -f /opt/recipeapp/docker-compose.yml logs --since 10m api 2>/dev/null \
+            | grep -E 'LLM fallback|Now listening on|Application started' | tail -5 || true
           REMOTE
