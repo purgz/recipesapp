@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { Subject, catchError, debounceTime, merge, of, startWith, switchMap, tap } from 'rxjs';
 import { RecipesApi } from '../../core/api';
 import { Lang } from '../../core/i18n';
+import { isInSeason } from '../../core/seasonal-produce';
 import type { RecipeSummary } from '../../core/models';
 
 @Component({
@@ -67,6 +68,11 @@ export class RecipeList implements OnInit {
   protected toggleTag(t: string): void {
     this.activeTag.update((cur) => (cur === t ? '' : t));
     this.tagChanges.next();
+  }
+
+  /** "In season" is derived from tags, not a stored flag. */
+  protected inSeason(r: RecipeSummary): boolean {
+    return isInSeason(r.tags ?? []);
   }
 
   protected onSearchChange(): void {

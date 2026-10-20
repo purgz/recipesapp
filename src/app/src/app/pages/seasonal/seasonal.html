@@ -32,7 +32,10 @@
   } @else {
     <ul>
       @for (r of seasonalRecipes(); track r.id) {
-        <li (click)="open(r.id)">{{ r.title }}</li>
+        <li (click)="open(r.id)">
+          <span class="title">{{ r.title }}</span>
+          <span class="match">{{ matches().get(r.id)?.join(', ') }}</span>
+        </li>
       }
     </ul>
   }

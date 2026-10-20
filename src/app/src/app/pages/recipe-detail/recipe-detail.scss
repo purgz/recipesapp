@@ -53,14 +53,22 @@
       }
 
       .meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem 0.9rem;
+        margin: 0.3rem 0 0;
         color: #8b867e;
         font-size: 0.9rem;
 
-        .servings {
+        .meta-item {
           display: inline-flex;
           align-items: center;
+          white-space: nowrap;
+        }
+
+        .servings {
           gap: 0.4rem;
-          margin-right: 0.15rem;
 
           button {
             padding: 0.05rem 0.45rem;
@@ -188,6 +196,11 @@
 @media (max-width: 560px) {
   .detail {
     padding: 0.9rem;
+
+    .hero-body .meta {
+      gap: 0.3rem 0.65rem;
+      font-size: 0.85rem;
+    }
 
     .cols {
       margin-top: 1rem;

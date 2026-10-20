@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RecipesApi } from '../../core/api';
 import { Lang } from '../../core/i18n';
+import { isInSeason } from '../../core/seasonal-produce';
 import type { Recipe } from '../../core/models';
 
 @Component({
@@ -31,6 +32,9 @@ export class RecipeDetail implements OnInit {
     const portions = this.portions();
     return recipe && recipe.servings > 0 && portions > 0 ? portions / recipe.servings : 1;
   });
+
+  /** "In season" is derived from tags; no stored flag. */
+  protected readonly inSeason = computed(() => isInSeason(this.recipe()?.tags ?? []));
 
   protected readonly scaledIngredients = computed(() =>
     (this.recipe()?.ingredients ?? []).map((ing) => ({

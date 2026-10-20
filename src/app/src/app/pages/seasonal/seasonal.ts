@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { RecipesApi } from '../../core/api';
 import { Lang } from '../../core/i18n';
-import { MONTH_NAMES_EN, MONTH_NAMES_DA, seasonalForMonth } from '../../core/seasonal-produce';
+import { MONTH_NAMES_EN, MONTH_NAMES_DA, seasonalForMonth, seasonalMatches } from '../../core/seasonal-produce';
 import type { RecipeSummary } from '../../core/models';
 
 @Component({
@@ -25,14 +25,29 @@ export class Seasonal implements OnInit {
     this.i18n.current() === 'da' ? MONTH_NAMES_DA : MONTH_NAMES_EN,
   );
   protected readonly produce = computed(() => seasonalForMonth(this.month()));
-  protected readonly seasonalRecipes = computed(() => this.recipes());
+
+  /** Recipe id → the month's produce items its tags matched. */
+  protected readonly matches = computed(() => {
+    const map = new Map<string, string[]>();
+    for (const r of this.recipes()) {
+      const hits = seasonalMatches(r.tags ?? [], this.month());
+      if (hits.length > 0) {
+        map.set(r.id, hits);
+      }
+    }
+    return map;
+  });
+
+  protected readonly seasonalRecipes = computed(() =>
+    this.recipes().filter((r) => this.matches().has(r.id)),
+  );
 
   async ngOnInit(): Promise<void> {
     try {
       const all = await new Promise<RecipeSummary[]>((res, rej) =>
         this.api.list().subscribe({ next: res, error: rej }),
       );
-      this.recipes.set(all.filter((r) => r.isSeasonalHighlight));
+      this.recipes.set(all);
     } catch {
       this.error.set(this.i18n.t('seasonal.loadFail'));
     } finally {

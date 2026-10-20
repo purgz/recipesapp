@@ -15,7 +15,7 @@ namespace RecipeApp.Api.Data.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
 
             modelBuilder.Entity("RecipeApp.Api.Data.MealPlanEntry", b =>
                 {
@@ -67,9 +67,6 @@ namespace RecipeApp.Api.Data.Migrations
                     b.Property<string>("IngredientsJson")
                         .IsRequired()
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsSeasonalHighlight")
-                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("PrepMinutes")
                         .HasColumnType("INTEGER");

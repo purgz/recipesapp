@@ -15,21 +15,21 @@
         @if (r.description; as d) {
           <p class="desc">{{ d }}</p>
         }
-        <p class="meta">
-          <span class="servings">
+        <div class="meta">
+          <span class="meta-item servings">
             <button type="button" class="ghost" (click)="adjustPortions(-1)" [disabled]="portions() <= 1">−</button>
-            {{ portions() }} {{ i18n.t('detail.servings') }}
+            <span class="meta-text">{{ portions() }} {{ i18n.t('detail.servings') }}</span>
             <button type="button" class="ghost" (click)="adjustPortions(1)" [disabled]="portions() >= 99">+</button>
           </span>
           @if (r.prepMinutes) {
-            · {{ r.prepMinutes }} {{ i18n.t('detail.prepFor') }}
+            <span class="meta-item">{{ r.prepMinutes }} {{ i18n.t('detail.prepFor') }}</span>
           }
           @if (r.cookMinutes) {
-            · {{ r.cookMinutes }} {{ i18n.t('detail.cook') }}
+            <span class="meta-item">{{ r.cookMinutes }} {{ i18n.t('detail.cook') }}</span>
           }
-        </p>
+        </div>
         <div class="chips">
-          @if (r.isSeasonalHighlight) {
+          @if (inSeason()) {
             <span class="chip season">{{ i18n.t('list.season') }}</span>
           }
           @for (t of r.tags; track t) {

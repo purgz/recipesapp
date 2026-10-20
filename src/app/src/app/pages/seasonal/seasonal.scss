@@ -70,6 +70,10 @@ h2 {
   }
 
   li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.8rem;
     background: #fff;
     border: 1px solid #eceae5;
     border-radius: 10px;
@@ -79,6 +83,19 @@ h2 {
 
     &:hover {
       background: #fdfcfb;
+    }
+
+    .title {
+      min-width: 0;
+    }
+
+    .match {
+      color: #3d6b34;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 0 1 auto;
     }
   }
 }

@@ -1,16 +1,28 @@
 <header class="topbar">
-  <a routerLink="/recipes" class="brand">🍲 {{ i18n.t('app.name') }}</a>
-  <nav>
-    <a routerLink="/recipes" routerLinkActive="active">{{ i18n.t('nav.recipes') }}</a>
-    <a routerLink="/plan" routerLinkActive="active">{{ i18n.t('nav.plan') }}</a>
-    <a routerLink="/shopping" routerLinkActive="active">{{ i18n.t('nav.shopping') }}</a>
-    <a routerLink="/seasonal" routerLinkActive="active">{{ i18n.t('nav.seasonal') }}</a>
-    <a routerLink="/recipes/new" routerLinkActive="active">{{ i18n.t('nav.new') }}</a>
+  <a routerLink="/recipes" class="brand" (click)="closeMenu()">🍲 {{ i18n.t('app.name') }}</a>
+
+  <button
+    class="menu-toggle"
+    type="button"
+    aria-controls="main-nav"
+    [attr.aria-expanded]="menuOpen()"
+    [attr.aria-label]="i18n.t('nav.menu')"
+    (click)="toggleMenu()"
+  >{{ menuOpen() ? '✕' : '☰' }}</button>
+
+  <nav id="main-nav" [class.open]="menuOpen()">
+    <a routerLink="/recipes" routerLinkActive="active" (click)="closeMenu()">{{ i18n.t('nav.recipes') }}</a>
+    <a routerLink="/plan" routerLinkActive="active" (click)="closeMenu()">{{ i18n.t('nav.plan') }}</a>
+    <a routerLink="/shopping" routerLinkActive="active" (click)="closeMenu()">{{ i18n.t('nav.shopping') }}</a>
+    <a routerLink="/seasonal" routerLinkActive="active" (click)="closeMenu()">{{ i18n.t('nav.seasonal') }}</a>
+    <a routerLink="/recipes/new" routerLinkActive="active" (click)="closeMenu()">{{ i18n.t('nav.new') }}</a>
+    @if (auth.authed()) {
+      <div class="nav-actions">
+        <span class="lang" (click)="i18n.toggle()" title="DA/EN">{{ i18n.current() === 'da' ? 'EN' : 'DA' }}</span>
+        <button class="ghost" type="button" (click)="auth.logout(); closeMenu()">{{ i18n.t('nav.logout') }}</button>
+      </div>
+    }
   </nav>
-  @if (auth.authed()) {
-    <span class="lang" (click)="i18n.toggle()" title="DA/EN">{{ i18n.current() === 'da' ? 'EN' : 'DA' }}</span>
-    <button class="ghost" type="button" (click)="auth.logout()">{{ i18n.t('nav.logout') }}</button>
-  }
 </header>
 
 <main>

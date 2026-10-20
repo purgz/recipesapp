@@ -77,6 +77,12 @@
     }
   }
 
+  .fields .hint {
+    margin: -0.2rem 0 0.8rem 7.6rem;
+    font-size: 0.82rem;
+    color: #8b867e;
+  }
+
   .cols {
     display: flex;
     gap: 0.7rem;
@@ -195,6 +201,10 @@
       max-width: none;
       width: 100%;
     }
+  }
+
+  .form-page .fields .hint {
+    margin-left: 0;
   }
 
   .form-page .ingrow {

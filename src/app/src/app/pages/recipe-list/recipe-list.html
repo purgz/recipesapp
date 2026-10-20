@@ -58,7 +58,7 @@
           {{ r.servings }} {{ i18n.t('list.pers') }}
         </p>
         <div class="chips small">
-          @if (r.isSeasonalHighlight) {
+          @if (inSeason(r)) {
             <span class="chip season">{{ i18n.t('list.season') }}</span>
           }
           @for (t of cardTags(r); track t) {

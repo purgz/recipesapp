@@ -62,7 +62,6 @@ public static class RecipeEndpoints
                 r.Servings,
                 r.PrepMinutes,
                 r.CookMinutes,
-                r.IsSeasonalHighlight,
                 r.UpdatedAt))
             .ToListAsync(ct);
         return Results.Ok(items);
@@ -96,7 +95,6 @@ public static class RecipeEndpoints
             CookMinutes = input.CookMinutes,
             IngredientsJson = JsonSerializer.Serialize(input.Ingredients),
             StepsJson = JsonSerializer.Serialize(input.Steps),
-            IsSeasonalHighlight = input.IsSeasonalHighlight,
         };
         await UpsertTags(db, recipe, input.Tags, ct);
 
@@ -128,7 +126,6 @@ public static class RecipeEndpoints
         recipe.CookMinutes = input.CookMinutes;
         recipe.IngredientsJson = JsonSerializer.Serialize(input.Ingredients);
         recipe.StepsJson = JsonSerializer.Serialize(input.Steps);
-        recipe.IsSeasonalHighlight = input.IsSeasonalHighlight;
         recipe.UpdatedAt = DateTime.UtcNow;
 
         recipe.Tags.Clear();
@@ -305,7 +302,6 @@ public static class RecipeEndpoints
         DeserializeIngredients(r.IngredientsJson),
         DeserializeSteps(r.StepsJson),
         r.Tags.Select(rt => rt.Tag.Name).OrderBy(t => t).ToList(),
-        r.IsSeasonalHighlight,
         r.Comments
             .OrderByDescending(c => c.CreatedAt)
             .Select(c => new CommentDto(c.Id, c.Author, c.Text, c.CreatedAt))

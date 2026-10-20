@@ -35,7 +35,6 @@ export class RecipeForm implements OnInit {
   protected prepMinutes = signal<number | null>(null);
   protected cookMinutes = signal<number | null>(null);
   protected tagsText = signal('');
-  protected isSeasonalHighlight = signal(false);
   protected ingredients = signal<IngredientEntry[]>([]);
   protected steps = signal<string[]>([]);
 
@@ -64,7 +63,6 @@ export class RecipeForm implements OnInit {
       this.prepMinutes.set(r.prepMinutes ?? null);
       this.cookMinutes.set(r.cookMinutes ?? null);
       this.tagsText.set(r.tags.join(', '));
-      this.isSeasonalHighlight.set(r.isSeasonalHighlight);
       this.ingredients.set(r.ingredients.length ? r.ingredients : [{ qty: null, unit: null, name: '' }]);
       this.steps.set(r.steps.length ? [...r.steps] : ['']);
       this.imageUploadedPath.set(r.imageUploadedPath ?? null);
@@ -197,7 +195,6 @@ export class RecipeForm implements OnInit {
         .split(',')
         .map((t) => t.trim())
         .filter((t) => t),
-      isSeasonalHighlight: this.isSeasonalHighlight(),
     };
 
     this.saving.set(true);

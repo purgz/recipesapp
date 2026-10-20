@@ -16,6 +16,7 @@ const STRINGS: Record<string, Record<UiLang, string>> = {
   'nav.seasonal': { da: 'Sæson', en: 'In season' },
   'nav.new': { da: 'Ny opskrift', en: 'New recipe' },
   'nav.logout': { da: 'Log ud', en: 'Log out' },
+  'nav.menu': { da: 'Menu', en: 'Menu' },
 
   'login.title': { da: 'Opskriftsbogen', en: 'RecipeApp' },
   'login.sub': { da: 'Log ind med familiens kodeord', en: 'Log in with the family password' },
@@ -67,7 +68,10 @@ const STRINGS: Record<string, Record<UiLang, string>> = {
   'form.cook': { da: 'Tilbered (min)', en: 'Cook (min)' },
   'form.tags': { da: 'Tags (kommasepareret)', en: 'Tags (comma-separated)' },
   'form.tagsPh': { da: 'f.eks. aftensmad, vegetar, efterår', en: 'e.g. dinner, vegetarian, autumn' },
-  'form.seasonal': { da: 'Vis med "sæson"-mærke', en: 'Mark as in-season' },
+  'form.seasonalHint': {
+    da: 'Sæson-mærket beregnes automatisk ud fra tags, der matcher månedens råvarer (f.eks. jordbær).',
+    en: 'The in-season badge is derived automatically from tags matching this month’s produce (e.g. strawberries).',
+  },
   'form.image': { da: 'Billede', en: 'Image' },
   'form.chooseImage': { da: 'Vælg billede', en: 'Choose image' },
   'form.removeImage': { da: 'Fjern uploadet billede', en: 'Remove uploaded image' },
@@ -137,8 +141,8 @@ const STRINGS: Record<string, Record<UiLang, string>> = {
   },
   'seasonal.recipes': { da: 'Sæson-opskrifter', en: 'In-season recipes' },
   'seasonal.none': {
-    da: 'Ingen inspiration endnu - markér en opskrift med "sæson"-mærket i redigeringsfeltet.',
-    en: 'Nothing yet - mark a recipe as in-season in the edit form.',
+    da: 'Ingen opskrifter matcher månedens råvarer endnu - tilføj et tag som fx jordbær eller rabarber.',
+    en: 'No recipes match this month’s produce yet - add a tag such as strawberries or rhubarb.',
   },
   'seasonal.loadFail': {
     da: 'Kunne ikke hente sæson-opskrifter.',

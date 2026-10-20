@@ -13,7 +13,6 @@ export interface RecipeSummary {
   servings: number;
   prepMinutes?: number | null;
   cookMinutes?: number | null;
-  isSeasonalHighlight: boolean;
   updatedAt: string;
 }
 
@@ -38,7 +37,6 @@ export interface Recipe {
   ingredients: IngredientEntry[];
   steps: string[];
   tags: string[];
-  isSeasonalHighlight: boolean;
   comments: CommentDto[];
   createdAt: string;
   updatedAt: string;
@@ -55,7 +53,6 @@ export interface RecipeInput {
   ingredients: IngredientEntry[];
   steps: string[];
   tags: string[];
-  isSeasonalHighlight: boolean;
 }
 
 export interface RecipeDraft {

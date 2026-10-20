@@ -11,7 +11,6 @@ public record RecipeSummaryDto(
     int Servings,
     int? PrepMinutes,
     int? CookMinutes,
-    bool IsSeasonalHighlight,
     DateTime UpdatedAt);
 
 public record RecipeDto(
@@ -28,7 +27,6 @@ public record RecipeDto(
     List<IngredientEntry> Ingredients,
     List<string> Steps,
     List<string> Tags,
-    bool IsSeasonalHighlight,
     List<CommentDto> Comments,
     DateTime CreatedAt,
     DateTime UpdatedAt);
@@ -43,8 +41,7 @@ public record RecipeInput(
     int? CookMinutes,
     List<IngredientEntry> Ingredients,
     List<string> Steps,
-    List<string> Tags,
-    bool IsSeasonalHighlight);
+    List<string> Tags);
 
 public record CommentDto(Guid Id, string Author, string Text, DateTime CreatedAt);
 

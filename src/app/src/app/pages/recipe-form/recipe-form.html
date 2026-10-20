@@ -62,13 +62,7 @@
       <label for="tags">{{ i18n.t('form.tags') }}</label>
       <input id="tags" type="text" [placeholder]="i18n.t('form.tagsPh')" [ngModelOptions]="{ standalone: true }" [ngModel]="tagsText()" (ngModelChange)="tagsText.set($event)" />
     </div>
-
-    <div class="row checkbox">
-      <label>
-        <input type="checkbox" [ngModelOptions]="{ standalone: true }" [ngModel]="isSeasonalHighlight()" (ngModelChange)="isSeasonalHighlight.set($event)" />
-        {{ i18n.t('form.seasonal') }}
-      </label>
-    </div>
+    <p class="hint">{{ i18n.t('form.seasonalHint') }}</p>
 
     <div class="row image">
       <label for="image">{{ i18n.t('form.image') }}</label>

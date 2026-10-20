@@ -21,7 +21,6 @@ public class Recipe
     public int? CookMinutes { get; set; }
     public string IngredientsJson { get; set; } = "[]";
     public string StepsJson { get; set; } = "[]";
-    public bool IsSeasonalHighlight { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
