@@ -12,6 +12,8 @@ public static class PlanEndpoints
         app.MapGet("/api/plan", List);
         app.MapPut("/api/plan/entry", Upsert);
         app.MapDelete("/api/plan/entry", Delete);
+        app.MapPost("/api/plan/suggest", Suggest);
+        app.MapPut("/api/plan/entries", ApplyEntries);
 
         app.MapGet("/api/shopping", GetList);
         app.MapPost("/api/shopping/generate", Generate);
@@ -77,6 +79,57 @@ public static class PlanEndpoints
     {
         await db.MealPlanEntries.Where(e => e.Date == date && e.Slot == slot).ExecuteDeleteAsync(ct);
         await shopping.EnsureGenerated(date, ct);
+        return Results.NoContent();
+    }
+
+    /// <summary>Preview only: nothing is saved until the client applies it.</summary>
+    private static async Task<IResult> Suggest(
+        MealPlanSuggester suggester, SuggestPlanRequest? req, CancellationToken ct)
+    {
+        var week = req?.Week ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var slot = req?.Slot ?? MealSlot.Dinner;
+        return Results.Ok(await suggester.SuggestAsync(week, slot, ct));
+    }
+
+    /// <summary>Bulk apply so a suggested week costs one shopping-list regeneration.</summary>
+    private static async Task<IResult> ApplyEntries(
+        AppDbContext db, ShoppingListService shopping,
+        ApplyPlanRequest req, CancellationToken ct)
+    {
+        if (req.Entries.Count == 0)
+        {
+            return Results.NoContent();
+        }
+
+        var ids = req.Entries.Select(e => e.RecipeId).Distinct().ToList();
+        var known = await db.Recipes.Where(r => ids.Contains(r.Id)).Select(r => r.Id).ToListAsync(ct);
+        var missing = ids.Except(known).ToList();
+        if (missing.Count > 0)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["entries"] = ["En eller flere opskrifter findes ikke længere."],
+            });
+        }
+
+        foreach (var input in req.Entries)
+        {
+            var entry = await db.MealPlanEntries
+                .FirstOrDefaultAsync(e => e.Date == input.Date && e.Slot == input.Slot, ct);
+            if (entry is null)
+            {
+                entry = new MealPlanEntry { Date = input.Date, Slot = input.Slot };
+                db.MealPlanEntries.Add(entry);
+            }
+            entry.RecipeId = input.RecipeId;
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        foreach (var monday in req.Entries.Select(e => ShoppingListService.StartOfWeek(e.Date)).Distinct())
+        {
+            await shopping.EnsureGenerated(monday, ct);
+        }
         return Results.NoContent();
     }
 
@@ -155,6 +208,9 @@ public static class PlanEndpoints
     }
 
     public record UpsertEntryRequest(DateOnly Date, MealSlot Slot, Guid? RecipeId);
+    public record SuggestPlanRequest(DateOnly? Week, MealSlot? Slot);
+    public record ApplyPlanRequest(List<ApplyPlanEntry> Entries);
+    public record ApplyPlanEntry(DateOnly Date, MealSlot Slot, Guid RecipeId);
     public record AddItemRequest(DateOnly Week, string Name, string? Unit, double? Quantity);
     public record SetCheckedRequest(bool Checked);
     public record GenerateRequest(DateOnly Week);

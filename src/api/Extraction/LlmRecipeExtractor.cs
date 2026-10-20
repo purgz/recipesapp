@@ -1,60 +1,36 @@
-using System.Net;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
-using Microsoft.Extensions.Options;
 
 namespace RecipeApp.Api.Extraction;
 
 /// <summary>
 /// Last-resort extractor for pages where neither JSON-LD nor microdata describe
-/// the recipe. Sends the readable article text to Groq and maps the strict JSON
-/// answer back into a RecipeDraft. Only active when Groq:ApiKey is configured;
-/// ingredient lines are re-parsed locally so Danish units ("tsk", "spsk") are
-/// never reinterpreted by the model.
+/// the recipe. Sends the readable article text to Groq (via <see cref="GroqClient"/>)
+/// and maps the strict JSON answer back into a RecipeDraft. Only active when
+/// Groq:ApiKey is configured; ingredient lines are re-parsed locally so Danish
+/// units ("tsk", "spsk") are never reinterpreted by the model.
 /// </summary>
 public partial class LlmRecipeExtractor(
     ScrapeFetcher fetcher,
-    HttpClient http,
-    IOptions<GroqOptions> options,
+    GroqClient groq,
     ILogger<LlmRecipeExtractor> log) : IRecipeExtractor
 {
     public const string DraftWarning = "AI-udtrukket via Groq – kontrollér indholdet.";
 
     private const int MaxInputChars = 12_000;
-    private const int MaxOutputTokens = 2_500;
-
-    private static readonly Lock AttemptsLock = new();
-    private static readonly Queue<DateTimeOffset> Attempts = new();
-
-    private GroqOptions Options => options.Value;
 
     /// <summary>Runs after the deterministic chain has failed.</summary>
     public int Priority => 100;
 
     public bool CanHandle(string url) =>
-        Options.Enabled &&
+        groq.Enabled &&
         Uri.TryCreate(url, UriKind.Absolute, out var u) &&
         (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps);
 
     public async Task<RecipeDraft> ExtractAsync(string url, CancellationToken ct)
     {
         var draft = new RecipeDraft { SourceUrl = url };
-
-        // A key with embedded whitespace makes HttpClient throw a generic
-        // "error occurred while sending the request" instead of returning 401.
-        if (Options.ApiKeyValue.Any(char.IsWhiteSpace))
-        {
-            draft.Warnings.Add("AI-nøglen indeholder mellemrum/linjeskift – opdatér GROQ_API_KEY og deploy igen.");
-            return draft;
-        }
-
-        if (!TryReserveAttempt())
-        {
-            draft.Warnings.Add($"AI-fallback er sat på pause (max {Options.MaxAttemptsPerHour}/time). Udfyld manuelt.");
-            return draft;
-        }
 
         var fetched = await fetcher.FetchAsync(url, ct);
         if (fetched.Html is null)
@@ -73,29 +49,32 @@ public partial class LlmRecipeExtractor(
         string content;
         try
         {
-            content = await CallGroqAsync(text, ct);
+            content = await groq.CompleteJsonAsync(SystemPrompt, text, Schema, ct);
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        catch (GroqException ex)
         {
-            draft.Warnings.Add($"AI-udtræk tog for lang tid (>{Options.TimeoutSeconds}s). Udfyld manuelt.");
-            return draft;
-        }
-        catch (HttpRequestException ex)
-        {
-            log.LogWarning(ex, "Groq extraction failed for {Url}", url);
-            // Outer messages are generic ("error occurred while sending the
-            // request"); the inner exception names the real cause.
-            draft.Warnings.Add($"AI-udtræk fejlede: {Truncate(Describe(ex), 300)}");
+            // Messages from GroqClient are already user-facing (incl. quota
+            // resets), so show them verbatim in the import form.
+            draft.Warnings.Add($"AI-udtræk fejlede: {ex.Message}");
             return draft;
         }
         catch (Exception ex)
         {
             log.LogWarning(ex, "Groq extraction failed for {Url}", url);
-            draft.Warnings.Add($"AI-udtræk fejlede ({ex.GetType().Name}): {Truncate(ex.Message, 200)}");
+            draft.Warnings.Add("AI-udtræk fejlede – prøv igen senere.");
             return draft;
         }
 
-        MapContent(draft, content);
+        try
+        {
+            MapContent(draft, content);
+        }
+        catch (JsonException ex)
+        {
+            log.LogWarning(ex, "Groq returned malformed JSON for {Url}", url);
+            draft.Warnings.Add("AI-svaret kunne ikke læses – udfyld manuelt.");
+            return draft;
+        }
 
         if (draft.Ingredients.Count == 0 && draft.Steps.Count == 0)
         {
@@ -105,120 +84,6 @@ public partial class LlmRecipeExtractor(
 
         draft.Warnings.Add(DraftWarning);
         return draft;
-    }
-
-    private async Task<string> CallGroqAsync(string text, CancellationToken ct)
-    {
-        var tokenParam = "max_tokens";
-        var reasoningEffort = true;
-        var response = await PostAsync(text, structured: true, tokenParam, reasoningEffort, ct);
-
-        // Older/alias models may not know reasoning_effort; drop it and retry.
-        if (await RejectsAsync(response, "reasoning_effort"))
-        {
-            response.Dispose();
-            reasoningEffort = false;
-            log.LogInformation("Groq rejected reasoning_effort; retrying without it");
-            response = await PostAsync(text, structured: true, tokenParam, reasoningEffort, ct);
-        }
-
-        // Groq rejects `max_tokens` for some reasoning models; retry with the
-        // newer name instead of failing outright.
-        if (await RejectsAsync(response, "max_tokens"))
-        {
-            response.Dispose();
-            tokenParam = "max_completion_tokens";
-            log.LogInformation("Groq rejected max_tokens; retrying with {Param}", tokenParam);
-            response = await PostAsync(text, structured: true, tokenParam, reasoningEffort, ct);
-        }
-
-        if (await RejectsAsync(response, "response_format", "json_schema"))
-        {
-            response.Dispose();
-            log.LogInformation("Groq model {Model} rejected json_schema; retrying with json_object", Options.ModelValue);
-            response = await PostAsync(text, structured: false, tokenParam, reasoningEffort, ct);
-        }
-
-        // Strict validation fails with an empty failed_generation when the
-        // generation is truncated; json_object mode tolerates that better.
-        if (await RejectsAsync(response, "json_validate_failed", "Failed to validate JSON"))
-        {
-            response.Dispose();
-            log.LogWarning("Groq could not validate the strict schema; retrying with json_object");
-            response = await PostAsync(text, structured: false, tokenParam, reasoningEffort, ct);
-        }
-
-        using (response)
-        {
-            var body = await response.Content.ReadAsStringAsync(ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                var hint = response.StatusCode == HttpStatusCode.TooManyRequests ? " (rate limit)" : "";
-                throw new HttpRequestException(
-                    $"Groq svarede {(int)response.StatusCode}{hint}: {Truncate(body, 300)}");
-            }
-
-            using var doc = JsonDocument.Parse(body);
-            var content = doc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString();
-
-            if (doc.RootElement.TryGetProperty("usage", out var usage))
-            {
-                log.LogInformation("Groq tokens: {Usage}", usage.ToString());
-            }
-
-            return StripFences(content ?? string.Empty);
-        }
-    }
-
-    private async Task<HttpResponseMessage> PostAsync(
-        string text, bool structured, string tokenParam, bool reasoningEffort, CancellationToken ct)
-    {
-        var payload = new Dictionary<string, object?>
-        {
-            ["model"] = Options.ModelValue,
-            ["temperature"] = 0,
-            [tokenParam] = MaxOutputTokens,
-            ["messages"] = new object[]
-            {
-                new { role = "system", content = SystemPrompt },
-                new { role = "user", content = text },
-            },
-        };
-
-        payload["response_format"] = structured
-            ? new
-            {
-                type = "json_schema",
-                json_schema = new
-                {
-                    name = "recipe",
-                    strict = true,
-                    schema = Schema,
-                },
-            }
-            : new { type = "json_object" };
-
-        // GPT-OSS models spend completion budget on hidden reasoning; without
-        // this the JSON can be truncated before it is emitted.
-        if (reasoningEffort && Options.ModelValue.Contains("gpt-oss", StringComparison.OrdinalIgnoreCase))
-        {
-            payload["reasoning_effort"] = "low";
-        }
-
-        var json = JsonSerializer.Serialize(payload);
-        using var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
-        {
-            Content = new StringContent(json, Encoding.UTF8, "application/json"),
-        };
-
-        // Await inside the using scope: returning the task would dispose the
-        // request (and its StringContent) before it is sent. The default
-        // ResponseContentRead means the request is complete when this returns.
-        return await http.SendAsync(request, ct);
     }
 
     private static readonly JsonElement Schema = JsonDocument.Parse("""
@@ -308,34 +173,6 @@ public partial class LlmRecipeExtractor(
             .Select(x => x.GetString()!);
     }
 
-    private static async Task<bool> RejectsAsync(HttpResponseMessage response, params string[] needles)
-    {
-        if ((int)response.StatusCode != 400)
-        {
-            return false;
-        }
-        var body = await response.Content.ReadAsStringAsync();
-        return needles.Any(n => body.Contains(n, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private bool TryReserveAttempt()
-    {
-        lock (AttemptsLock)
-        {
-            var cutoff = DateTimeOffset.UtcNow.AddHours(-1);
-            while (Attempts.Count > 0 && Attempts.Peek() < cutoff)
-            {
-                Attempts.Dequeue();
-            }
-            if (Attempts.Count >= Options.MaxAttemptsPerHour)
-            {
-                return false;
-            }
-            Attempts.Enqueue(DateTimeOffset.UtcNow);
-            return true;
-        }
-    }
-
     private static string ReadableText(string html)
     {
         var doc = new HtmlDocument();
@@ -358,34 +195,6 @@ public partial class LlmRecipeExtractor(
         var text = HtmlEntity.DeEntitize(root?.InnerText ?? string.Empty);
         text = Whitespace().Replace(text.Replace('\u00A0', ' '), " ").Trim();
         return text.Length > MaxInputChars ? text[..MaxInputChars] : text;
-    }
-
-    private static string StripFences(string content)
-    {
-        var trimmed = content.Trim();
-        if (!trimmed.StartsWith("```", StringComparison.Ordinal))
-        {
-            return trimmed;
-        }
-        var firstLine = trimmed.IndexOf('\n');
-        var lastFence = trimmed.LastIndexOf("```", StringComparison.Ordinal);
-        return firstLine >= 0 && lastFence > firstLine
-            ? trimmed[(firstLine + 1)..lastFence].Trim()
-            : trimmed;
-    }
-
-    private static string Truncate(string value, int length) =>
-        value.Length <= length ? value : value[..length] + "…";
-
-    /// <summary>Joins the exception chain so the real transport error is visible.</summary>
-    private static string Describe(Exception ex)
-    {
-        var parts = new List<string>();
-        for (var e = ex; e is not null && parts.Count < 4; e = e.InnerException)
-        {
-            parts.Add(e.Message);
-        }
-        return string.Join(" → ", parts);
     }
 
     [GeneratedRegex(@"\s+")]
