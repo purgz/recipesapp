@@ -87,8 +87,8 @@ public static class PlanEndpoints
         MealPlanSuggester suggester, SuggestPlanRequest? req, CancellationToken ct)
     {
         var week = req?.Week ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var slot = req?.Slot ?? MealSlot.Dinner;
-        return Results.Ok(await suggester.SuggestAsync(week, slot, ct));
+        var slots = req?.Slots is { Count: > 0 } selected ? selected : new List<MealSlot> { MealSlot.Dinner };
+        return Results.Ok(await suggester.SuggestAsync(week, slots, ct));
     }
 
     /// <summary>Bulk apply so a suggested week costs one shopping-list regeneration.</summary>
@@ -208,7 +208,7 @@ public static class PlanEndpoints
     }
 
     public record UpsertEntryRequest(DateOnly Date, MealSlot Slot, Guid? RecipeId);
-    public record SuggestPlanRequest(DateOnly? Week, MealSlot? Slot);
+    public record SuggestPlanRequest(DateOnly? Week, List<MealSlot>? Slots);
     public record ApplyPlanRequest(List<ApplyPlanEntry> Entries);
     public record ApplyPlanEntry(DateOnly Date, MealSlot Slot, Guid RecipeId);
     public record AddItemRequest(DateOnly Week, string Name, string? Unit, double? Quantity);
