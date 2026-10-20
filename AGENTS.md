@@ -2,7 +2,8 @@
 
 Recipe manager for a Danish household: paste recipe URLs, extract
 ingredients/steps, tags, comments, weekly meal plan, auto shopping list.
-No video/YouTube support and NO LLM (user decision) - link pasting only.
+No video/YouTube support. Extraction is deterministic first, with an optional
+opt-in Groq LLM fallback for pages that carry no schema.org data - link pasting only.
 
 ## Stack
 
@@ -10,7 +11,7 @@ No video/YouTube support and NO LLM (user decision) - link pasting only.
 - Frontend: Angular 22 (standalone, signals-capable), scaffolded in `src/app`
 - DB: EF Core 10 + SQLite at `src/api/App_Data/app.db` (gitignored)
 - Angular production build is served from `wwwroot` by the API in prod (single process, no CORS); dev uses `ng serve` proxy instead
-- Extraction is deterministic — no LLM API costs on the deployed app
+- Extraction is deterministic first; the optional Groq fallback only runs when `GROQ_API_KEY` is set and both schema.org extractors failed
 
 ## Commands
 
@@ -33,18 +34,23 @@ No video/YouTube support and NO LLM (user decision) - link pasting only.
 ## Architecture rules (easy to get wrong)
 
 - Extraction: deterministic chain of `IRecipeExtractor` implementations, never inline logic in controllers:
-  SchemaOrg (JSON-LD) → Microdata (itemprop fallback for old WP blogs like valdemarsro.dk, HtmlAgilityPack).
-  Extractors run lowest `Priority` first and merge warnings when none produce data. What resists parsing is
-  structured manually in the edit form. No YouTube/video extractor (removed - was too brittle); no LLM.
+  SchemaOrg (JSON-LD) → Microdata (itemprop fallback for old WP blogs like valdemarsro.dk, HtmlAgilityPack)
+  → optional Groq fallback (Priority 100, only when configured). Extractors run lowest `Priority` first and
+  merge warnings when none produce data. What resists parsing is structured manually in the edit form.
+  No YouTube/video extractor (removed - was too brittle).
 - Auth details: API calls must fail with 401/403, never redirect (SPA owns navigation) — cookie auth events
   override `OnRedirectToLogin`. `IFormFile` upload endpoint must call `.DisableAntiforgery()`.
-- NO LLM anywhere (user decision): no Ollama service, no publish/LLM-edition fallback — do not add AI
-  features back without asking. Video recipes (YouTube only): metadata + captions land as editable
-  draft text; parts that resist parsing are structured manually in the edit form.
+- LLM policy (user decision, revised): no LLM is required and nothing runs when `GROQ_API_KEY` is unset.
+  The only LLM is the opt-in Groq fallback (`Extraction/LlmRecipeExtractor.cs`) used after deterministic
+  extraction fails; it must never translate Danish text/units (ingredient lines are re-parsed locally),
+  never be a hard dependency, and never run without the key. Do not add Ollama/self-hosted models —
+  the deploy VM has ~1 GB RAM.
 - Auth = single shared household secret → signed HttpOnly cookie. Do NOT add ASP.NET Identity or per-user accounts.
 - `Ingredients`/`Steps` are stored as JSON strings (`IngredientsJson`/`StepsJson`) on Recipe; shopping-list aggregation matches on ingredient name + unit exactly.
 - Danish ingredient units ("tsk", "spsk", "g", "båd"...) must survive scraping verbatim — never translate or convert.
-- Seasonal DK produce per month = static TypeScript constant in the Angular app, not DB rows.
+- Seasonal DK produce per month = static TypeScript constant in the Angular app, not DB rows. The in-season
+  badge/filter is derived by matching recipe tags against that list (`seasonalMatches`); there is no stored
+  seasonal flag.
 - Meal plan: `MealPlanEntry` unique on `(Date, Slot)`; `ShoppingList` unique per `WeekStart` (Monday). Slot enum: Breakfast/Lunch/Dinner/Extra.
 - Routing: `/api/{**}` falls back to 404 BEFORE the SPA `index.html` fallback — keep that ordering in `Program.cs`.
   Do NOT use `UseDefaultFiles()` — root `/` is served by the anonymous SPA file fallback instead.
@@ -52,7 +58,7 @@ No video/YouTube support and NO LLM (user decision) - link pasting only.
 ## Deployment
 
 - Target: Oracle Cloud free tier. GitHub Actions builds a multi-arch (`linux/amd64` + `linux/arm64`) image → GHCR; VM pulls and runs `docker compose up -d`. Multi-arch because the free tier comes in both AMD x86 and Ampere A1 ARM shapes.
-- Compose services: `caddy` (TLS + reverse proxy `api:8080`, subdomain `recipes.<domain>` with auto-HTTPS) and `api` (SQLite + uploaded images on one named data volume). No LLM — tiny footprint, safe on the always-free tier.
+- Compose services: `caddy` (TLS + reverse proxy `api:8080`, subdomain `recipes.<domain>` with auto-HTTPS) and `api` (SQLite + uploaded images on one named data volume). No LLM runs on the VM — the optional Groq fallback is a remote API call. Tiny footprint, safe on the always-free tier.
 - Gotcha: ports 80/443 must be opened TWICE on Oracle — VCN subnet security list AND instance security list.
 - Oracle may reclaim idle free-tier instances: nightly cron backs up SQLite DB + `App_Data/images` (tarball → Azure Blob, user's existing account). Nothing on the VM is unreproducible except backups.
 - Fallback host if reclaimed: Hetzner ~€4/mo, same compose file; the image is already published for both `linux/amd64` and `linux/arm64`.

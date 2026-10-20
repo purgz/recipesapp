@@ -69,13 +69,13 @@ public partial class SchemaOrgRecipeExtractor(ScrapeFetcher fetcher) : IRecipeEx
             CollectStep(s, draft);
         }
 
-        draft.Tags = JsonLd.Values(node, "keywords")
-            .Select(k => k.ToString())
-            .SelectMany(t => t.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            .Select(t => t.Trim().ToLowerInvariant())
-            .Where(t => t.Length is > 1 and <= 40)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        // Categories carry the meal type ("Dessert", "Aftensmad"); keywords add
+        // the site's free-form tags. Normalize both into one tag vocabulary.
+        var rawTags = JsonLd.Values(node, "recipeCategory")
+            .Concat(JsonLd.Values(node, "recipeCuisine"))
+            .Concat(JsonLd.Values(node, "keywords"))
+            .Select(v => v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : v.ToString());
+        draft.Tags = TagNormalizer.Normalize(rawTags);
     }
 
     private static void CollectStep(JsonElement s, RecipeDraft draft)

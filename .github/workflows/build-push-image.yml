@@ -74,15 +74,19 @@ jobs:
 
       # Regenerate .env on every deploy but keep an existing household password
       # (it is generated once on first deploy and never printed anywhere).
+      # GROQ_* is only added when configured, so removing the secret disables
+      # the LLM fallback again.
       - name: Write .env on the VM
         env:
           GHCR_REPO: ${{ github.repository }}
           IMAGE_TAG: ${{ github.sha }}
+          GROQ_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
         run: |
           repo_lc="${GHCR_REPO,,}"
-          ssh ubuntu@"$SSH_HOST" bash -s -- "$repo_lc" "$IMAGE_TAG" <<'REMOTE'
+          ssh ubuntu@"$SSH_HOST" bash -s -- "$repo_lc" "$IMAGE_TAG" "$GROQ_KEY" "$GROQ_MODEL" <<'REMOTE'
           set -euo pipefail
-          repo="$1"; tag="$2"
+          repo="$1"; tag="$2"; groq_key="$3"; groq_model="$4"
           cd /opt/recipeapp
           pw=""
           if [ -f .env ]; then
@@ -97,6 +101,12 @@ jobs:
           HOUSEHOLD_PASSWORD=${pw}
           IMAGE_TAG=${tag}
           EOF
+          if [ -n "$groq_key" ]; then
+            printf 'GROQ_API_KEY=%s\n' "$groq_key" >> .env
+          fi
+          if [ -n "$groq_model" ]; then
+            printf 'GROQ_MODEL=%s\n' "$groq_model" >> .env
+          fi
           REMOTE
 
       - name: Log GHCR into Docker on the VM

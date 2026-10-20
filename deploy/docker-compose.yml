@@ -17,6 +17,9 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Default: Data Source=/app/App_Data/app.db
       Household__Password: ${HOUSEHOLD_PASSWORD:?set in .env}
+      # Optional Groq fallback: empty key disables the extractor entirely.
+      Groq__ApiKey: ${GROQ_API_KEY:-}
+      Groq__Model: ${GROQ_MODEL:-openai/gpt-oss-120b}
     volumes:
       - recipe_data:/app/App_Data
 

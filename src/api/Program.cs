@@ -34,6 +34,22 @@ builder.Services
 builder.Services.AddScoped<ScrapeFetcher>();
 builder.Services.AddScoped<IRecipeExtractor, SchemaOrgRecipeExtractor>();
 builder.Services.AddScoped<IRecipeExtractor, MicrodataRecipeExtractor>();
+
+// Optional last-resort LLM fallback; inert unless Groq:ApiKey is configured.
+builder.Services.Configure<GroqOptions>(builder.Configuration.GetSection("Groq"));
+builder.Services.AddHttpClient<LlmRecipeExtractor>((sp, http) =>
+{
+    var groq = sp.GetRequiredService<IOptions<GroqOptions>>().Value;
+    http.BaseAddress = new Uri(groq.BaseUrl.TrimEnd('/') + "/");
+    http.Timeout = TimeSpan.FromSeconds(groq.TimeoutSeconds);
+    if (!string.IsNullOrWhiteSpace(groq.ApiKey))
+    {
+        http.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", groq.ApiKey);
+    }
+});
+builder.Services.AddScoped<IRecipeExtractor>(sp => sp.GetRequiredService<LlmRecipeExtractor>());
+
 builder.Services.AddScoped<ExtractionPipeline>();
 builder.Services.AddScoped<ShoppingListService>();
 

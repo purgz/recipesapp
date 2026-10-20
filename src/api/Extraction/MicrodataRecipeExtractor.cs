@@ -127,6 +127,31 @@ public class MicrodataRecipeExtractor(ScrapeFetcher fetcher) : IRecipeExtractor
 
         draft.PrepMinutes ??= Minutes(scope, "prepTime");
         draft.CookMinutes ??= Minutes(scope, "cookTime") ?? Minutes(scope, "totalTime");
+
+        // schema.org microdata puts the meal type in recipeCategory/recipeCuisine;
+        // WordPress themes often also expose it via article:section.
+        if (draft.Tags.Count == 0)
+        {
+            var categoryValues = new List<string>();
+            foreach (var prop in new[] { "recipeCategory", "recipeCuisine" })
+            {
+                if (scope.SelectNodes($".//*[@itemprop='{prop}']") is { } nodes)
+                {
+                    categoryValues.AddRange(nodes.Select(n => HtmlEntity.DeEntitize(n.InnerText.Clean())));
+                }
+            }
+
+            var section = Text(doc.DocumentNode.SelectSingleNode("//meta[@property='article:section']"), "content");
+            if (section is not null)
+            {
+                categoryValues.Add(section);
+            }
+
+            if (categoryValues.Count > 0)
+            {
+                draft.Tags = TagNormalizer.Normalize(categoryValues);
+            }
+        }
     }
 
     private static void TryAddStep(RecipeDraft draft, string text)
