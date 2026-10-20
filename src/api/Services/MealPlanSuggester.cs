@@ -58,6 +58,12 @@ public class MealPlanSuggester(AppDbContext db, GroqClient groq, ILogger<MealPla
                 {
                     source = "ai";
                 }
+                log.LogInformation(
+                    "Meal plan AI: {Accepted}/{Expected} picks for slots {Slots}, library {Library}",
+                    picks.Count,
+                    selected.Count * 7,
+                    string.Join(",", selected),
+                    recipes.Count);
             }
             catch (GroqException ex)
             {
@@ -125,10 +131,10 @@ public class MealPlanSuggester(AppDbContext db, GroqClient groq, ILogger<MealPla
         Rules:
         - For EACH requested slot, return exactly one pick per day: day 0 = Monday ... day 6 = Sunday.
         - Slot values: 1 = breakfast, 2 = lunch, 3 = dinner, 4 = extra/dessert.
-        - Use each recipe index at most once across the whole plan when possible.
+        - Choose what suits each slot and time of day; the same recipe may appear on several days
+          or in different slots when that makes sense (e.g. the same breakfast staple).
         - Prefer recipes of 35 minutes or less on weekdays (days 0-4); longer recipes suit the weekend.
-        - Vary the tags/cuisines across the week.
-        - Use only indices from the recipe list and do not invent recipes.
+        - Vary the meals where it makes sense, and use only indices from the recipe list.
         - Return ONLY JSON matching the schema.
         """;
 
@@ -170,7 +176,6 @@ public class MealPlanSuggester(AppDbContext db, GroqClient groq, ILogger<MealPla
             return result;
         }
 
-        var used = new HashSet<Guid>();
         foreach (var pick in picks.EnumerateArray())
         {
             if (!pick.TryGetProperty("slot", out var slotEl) || !slotEl.TryGetInt32(out var slotValue) ||
@@ -197,17 +202,15 @@ public class MealPlanSuggester(AppDbContext db, GroqClient groq, ILogger<MealPla
                 continue;
             }
 
-            var candidate = recipes[index - 1];
-            if (!used.Add(candidate.Id))
-            {
-                continue;
-            }
-            result[(slot, day)] = candidate;
+            // The model's choices are preserved as-is: the same recipe may
+            // legitimately appear on several days or in different slots. Only
+            // the structural (slot, day) key is de-duplicated above.
+            result[(slot, day)] = recipes[index - 1];
         }
 
         if (result.Count < expected)
         {
-            warning = "AI-forslaget dækkede ikke hele planen – resten er fyldt ud automatisk.";
+            warning = $"AI'en foreslog {result.Count} af {expected} måltider – resten er fyldt ud automatisk.";
         }
         return result;
     }

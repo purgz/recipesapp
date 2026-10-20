@@ -49,8 +49,10 @@ opt-in Groq LLM fallback for pages that carry no schema.org data - link pasting 
   a provider 429 is logged together with its reset time and shown to the user with when it resets.
 - Meal-plan AI (`Services/MealPlanSuggester.cs`): sends only numbered titles/tags/times (~2k tokens),
   validates picks against the DB and fills missing days deterministically, so a quota/model failure still
-  returns a usable week plus a warning. `POST /api/plan/suggest` is preview-only; `PUT /api/plan/entries`
-  applies a week in bulk (one shopping-list regeneration).
+  returns a usable week plus a warning. The model's picks are preserved as-is — it may reuse a recipe on
+  several days or across slots (e.g. the same breakfast); only `(slot, day)` collisions are de-duplicated.
+  `POST /api/plan/suggest` is preview-only; `PUT /api/plan/entries` applies a week in bulk (one
+  shopping-list regeneration).
 - Auth = single shared household secret → signed HttpOnly cookie. Do NOT add ASP.NET Identity or per-user accounts.
 - `Ingredients`/`Steps` are stored as JSON strings (`IngredientsJson`/`StepsJson`) on Recipe; shopping-list aggregation matches on ingredient name + unit exactly.
 - Danish ingredient units ("tsk", "spsk", "g", "båd"...) must survive scraping verbatim — never translate or convert.
