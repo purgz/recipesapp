@@ -42,6 +42,14 @@ public partial class LlmRecipeExtractor(
     {
         var draft = new RecipeDraft { SourceUrl = url };
 
+        // A key with embedded whitespace makes HttpClient throw a generic
+        // "error occurred while sending the request" instead of returning 401.
+        if (Options.ApiKeyValue.Any(char.IsWhiteSpace))
+        {
+            draft.Warnings.Add("AI-nøglen indeholder mellemrum/linjeskift – opdatér GROQ_API_KEY og deploy igen.");
+            return draft;
+        }
+
         if (!TryReserveAttempt())
         {
             draft.Warnings.Add($"AI-fallback er sat på pause (max {Options.MaxAttemptsPerHour}/time). Udfyld manuelt.");
@@ -75,8 +83,9 @@ public partial class LlmRecipeExtractor(
         catch (HttpRequestException ex)
         {
             log.LogWarning(ex, "Groq extraction failed for {Url}", url);
-            // Surface the provider's reason in the form; the key is never included.
-            draft.Warnings.Add($"AI-udtræk fejlede: {Truncate(ex.Message, 240)}");
+            // Outer messages are generic ("error occurred while sending the
+            // request"); the inner exception names the real cause.
+            draft.Warnings.Add($"AI-udtræk fejlede: {Truncate(Describe(ex), 300)}");
             return draft;
         }
         catch (Exception ex)
@@ -336,6 +345,17 @@ public partial class LlmRecipeExtractor(
 
     private static string Truncate(string value, int length) =>
         value.Length <= length ? value : value[..length] + "…";
+
+    /// <summary>Joins the exception chain so the real transport error is visible.</summary>
+    private static string Describe(Exception ex)
+    {
+        var parts = new List<string>();
+        for (var e = ex; e is not null && parts.Count < 4; e = e.InnerException)
+        {
+            parts.Add(e.Message);
+        }
+        return string.Join(" → ", parts);
+    }
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Whitespace();
