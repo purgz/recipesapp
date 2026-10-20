@@ -3,7 +3,6 @@ namespace RecipeApp.Api.Extraction;
 public enum GroqFailure
 {
     Disabled,
-    LocalQuota,
     RateLimitMinute,
     RateLimitDay,
     Auth,

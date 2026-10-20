@@ -1,21 +1,20 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 
 namespace RecipeApp.Api.Extraction;
 
 /// <summary>
 /// One shared entry point for every Groq chat-completions call. Owns the
-/// retry ladder for parameter variants Groq rejects, the per-hour attempt cap
-/// and the translation of provider errors into clear Danish messages —
-/// especially rate limits, where the user needs to know it resets on its own.
+/// retry ladder for parameter variants Groq rejects and the translation of
+/// provider errors into clear Danish messages — especially rate limits, where
+/// the user needs to know when it resets.
 /// </summary>
-public class GroqClient(HttpClient http, IOptions<GroqOptions> options, ILogger<GroqClient> log)
+public partial class GroqClient(HttpClient http, IOptions<GroqOptions> options, ILogger<GroqClient> log)
 {
-    private static readonly Lock AttemptsLock = new();
-    private static readonly Queue<DateTimeOffset> Attempts = new();
-
     // Groq tells us once which parameter variants it accepts for the model;
     // remember that for the rest of the process instead of retrying every call.
     private static bool _useReasoningEffort = true;
@@ -37,8 +36,6 @@ public class GroqClient(HttpClient http, IOptions<GroqOptions> options, ILogger<
                 "AI er ikke konfigureret. Tilføj GROQ_API_KEY for at aktivere det.",
                 GroqFailure.Disabled);
         }
-
-        ReserveAttempt();
 
         var tokenParam = _useCompletionTokens ? "max_completion_tokens" : "max_tokens";
         var reasoning = _useReasoningEffort;
@@ -217,55 +214,104 @@ public class GroqClient(HttpClient http, IOptions<GroqOptions> options, ILogger<
         return needles.Any(n => body.Contains(n, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static GroqException RateLimited(HttpResponseMessage response, string body)
+    private GroqException RateLimited(HttpResponseMessage response, string body)
     {
-        var retry = response.Headers.RetryAfter;
-        TimeSpan? wait = retry?.Delta;
-        if (wait is null && retry?.Date is { } date)
-        {
-            wait = date - DateTimeOffset.UtcNow;
-        }
-
         var perDay = body.Contains("per day", StringComparison.OrdinalIgnoreCase)
                      || body.Contains("daily", StringComparison.OrdinalIgnoreCase);
         var perMinute = body.Contains("per minute", StringComparison.OrdinalIgnoreCase)
                         || body.Contains("tokens per min", StringComparison.OrdinalIgnoreCase);
 
-        if (!perDay && (perMinute || wait is { TotalSeconds: > 0 and <= 120 }))
+        if (!perDay)
         {
-            var seconds = wait is { TotalSeconds: > 0 } w
-                ? $" om ca. {Math.Max(1, (int)w.TotalSeconds)} sekunder"
-                : " om et øjeblik";
-            return new GroqException(
-                $"AI-grænsen for dette minut er nået – prøv igen{seconds}.",
-                GroqFailure.RateLimitMinute);
+            var wait = HeaderDuration(response, "x-ratelimit-reset-tokens") ?? RetryAfterWait(response);
+            if (perMinute || wait is { TotalSeconds: > 0 and <= 120 })
+            {
+                var effective = wait ?? TimeSpan.FromMinutes(1);
+                var resetAt = DateTimeOffset.UtcNow.Add(effective);
+                log.LogWarning(
+                    "Groq rate limit reached (per minute). Resets at {ResetAt:u} (in {Wait}).",
+                    resetAt, effective);
+                return new GroqException(
+                    $"AI-grænsen for dette minut er nået – prøv igen {When(resetAt)}.",
+                    GroqFailure.RateLimitMinute);
+            }
         }
 
+        var dailyWait = HeaderDuration(response, "x-ratelimit-reset-requests")
+                        ?? RetryAfterWait(response)
+                        ?? TimeUntilUtcMidnight();
+        var dailyReset = DateTimeOffset.UtcNow.Add(dailyWait);
+        log.LogWarning(
+            "Groq rate limit reached (daily quota). Resets at {ResetAt:u} (in {Wait}).",
+            dailyReset, dailyWait);
         return new GroqException(
-            "Den daglige gratis AI-kvote er brugt op. Den nulstilles automatisk ved midnat UTC – prøv igen i morgen.",
+            $"Den daglige gratis AI-kvote er brugt op. Den nulstilles {When(dailyReset)}.",
             GroqFailure.RateLimitDay);
     }
 
-    private void ReserveAttempt()
+    /// <summary>Parses Groq's duration header, e.g. "2m59.56s".</summary>
+    private static TimeSpan? HeaderDuration(HttpResponseMessage response, string header) =>
+        response.Headers.TryGetValues(header, out var values)
+            ? ParseGoDuration(values.FirstOrDefault())
+            : null;
+
+    private static TimeSpan? RetryAfterWait(HttpResponseMessage response)
     {
-        lock (AttemptsLock)
+        var retry = response.Headers.RetryAfter;
+        if (retry?.Delta is { } delta && delta > TimeSpan.Zero)
         {
-            var cutoff = DateTimeOffset.UtcNow.AddHours(-1);
-            while (Attempts.Count > 0 && Attempts.Peek() < cutoff)
-            {
-                Attempts.Dequeue();
-            }
-
-            if (Attempts.Count >= Options.MaxAttemptsPerHour)
-            {
-                throw new GroqException(
-                    $"AI er sat på pause efter {Options.MaxAttemptsPerHour} forsøg på en time – prøv igen senere.",
-                    GroqFailure.LocalQuota);
-            }
-
-            Attempts.Enqueue(DateTimeOffset.UtcNow);
+            return delta;
         }
+        if (retry?.Date is { } date && date - DateTimeOffset.UtcNow is { } wait && wait > TimeSpan.Zero)
+        {
+            return wait;
+        }
+        return null;
     }
+
+    private static TimeSpan? ParseGoDuration(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+        var match = GoDuration().Match(raw.Trim());
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var hours = match.Groups[1].Success ? int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : 0;
+        var minutes = match.Groups[2].Success ? int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture) : 0;
+        var seconds = match.Groups[3].Success &&
+                      double.TryParse(match.Groups[3].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var s)
+            ? s
+            : 0;
+
+        var total = TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds);
+        return total > TimeSpan.Zero ? total : null;
+    }
+
+    private static TimeSpan TimeUntilUtcMidnight()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var midnight = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero).AddDays(1);
+        return midnight - now;
+    }
+
+    private static string When(DateTimeOffset resetAt)
+    {
+        var wait = resetAt - DateTimeOffset.UtcNow;
+        var relative = wait.TotalSeconds < 90
+            ? $"om ca. {Math.Max(1, (int)wait.TotalSeconds)} sekunder"
+            : wait.TotalMinutes < 90
+                ? $"om ca. {Math.Round(wait.TotalMinutes)} minutter"
+                : $"om ca. {Math.Round(wait.TotalHours)} timer";
+        return $"{relative} (kl. {resetAt:HH:mm} UTC)";
+    }
+
+    [GeneratedRegex(@"^(?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?$")]
+    private static partial Regex GoDuration();
 
     private static string StripFences(string content)
     {

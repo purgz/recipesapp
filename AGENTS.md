@@ -45,8 +45,8 @@ opt-in Groq LLM fallback for pages that carry no schema.org data - link pasting 
   extraction fails; it must never translate Danish text/units (ingredient lines are re-parsed locally),
   never be a hard dependency, and never run without the key. Do not add Ollama/self-hosted models —
   the deploy VM has ~1 GB RAM. All calls go through `Extraction/GroqClient.cs`, which owns the retry
-  ladder, the per-hour attempt cap and the user-facing Danish quota messages (a 429 must say that the
-  daily quota resets automatically).
+  ladder and the user-facing Danish quota messages. There are deliberately no app-side AI rate limits:
+  a provider 429 is logged together with its reset time and shown to the user with when it resets.
 - Meal-plan AI (`Services/MealPlanSuggester.cs`): sends only numbered titles/tags/times (~2k tokens),
   validates picks against the DB and fills missing days deterministically, so a quota/model failure still
   returns a usable week plus a warning. `POST /api/plan/suggest` is preview-only; `PUT /api/plan/entries`

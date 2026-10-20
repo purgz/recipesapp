@@ -16,9 +16,6 @@ public class GroqOptions
 
     public int TimeoutSeconds { get; set; } = 60;
 
-    /// <summary>Hard cap so a stuck retry loop can never burn the daily quota.</summary>
-    public int MaxAttemptsPerHour { get; set; } = 10;
-
     public bool Enabled => !string.IsNullOrWhiteSpace(ApiKey);
 
     /// <summary>Trimmed key; secrets pasted into GitHub often carry a trailing newline.</summary>
