@@ -155,7 +155,7 @@ public partial class LlmRecipeExtractor(
         }
     }
 
-    private Task<HttpResponseMessage> PostAsync(string text, bool structured, string tokenParam, CancellationToken ct)
+    private async Task<HttpResponseMessage> PostAsync(string text, bool structured, string tokenParam, CancellationToken ct)
     {
         var payload = new Dictionary<string, object?>
         {
@@ -187,7 +187,11 @@ public partial class LlmRecipeExtractor(
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };
-        return http.SendAsync(request, ct);
+
+        // Await inside the using scope: returning the task would dispose the
+        // request (and its StringContent) before it is sent. The default
+        // ResponseContentRead means the request is complete when this returns.
+        return await http.SendAsync(request, ct);
     }
 
     private static readonly JsonElement Schema = JsonDocument.Parse("""
