@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { PlanEntry, ShoppingList } from './models';
+import { SLOT_DINNER } from './models';
+import type { PlanEntry, ShoppingList, SuggestPlanResponse } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class PlanApi {
@@ -17,6 +18,15 @@ export class PlanApi {
 
   deleteEntry(date: string, slot: number) {
     return this.http.delete('/api/plan/entry', { params: { date, slot }, responseType: 'text' });
+  }
+
+  /** Preview only — nothing is saved until applyEntries is called. */
+  suggest(week: string, slot: number = SLOT_DINNER) {
+    return this.http.post<SuggestPlanResponse>('/api/plan/suggest', { week, slot });
+  }
+
+  applyEntries(entries: { date: string; slot: number; recipeId: string }[]) {
+    return this.http.put('/api/plan/entries', { entries }, { responseType: 'text' });
   }
 
   shopping(week?: string) {

@@ -8,7 +8,7 @@ import {
   formatDate,
   shiftWeek,
 } from '../../core/plan-api';
-import type { PlanEntry, RecipeSummary } from '../../core/models';
+import type { PlanEntry, RecipeSummary, SuggestedPlanEntry, SuggestPlanResponse } from '../../core/models';
 
 @Component({
   selector: 'app-meal-plan',
@@ -30,6 +30,13 @@ export class MealPlan implements OnInit {
   protected readonly chooserSearch = signal('');
   protected readonly chooserTag = signal('');
   protected readonly busy = signal(false);
+
+  /** AI/deterministic week suggestion — previewed, not saved until applied. */
+  protected readonly suggestions = signal<Map<string, SuggestedPlanEntry>>(new Map());
+  protected readonly suggestSource = signal<'ai' | 'fallback' | ''>('');
+  protected readonly suggestWarning = signal('');
+  protected readonly suggestApplied = signal(false);
+  protected readonly suggesting = signal(false);
 
   protected readonly slots = [{ slot: 1 }, { slot: 2 }, { slot: 3 }, { slot: 4 }];
 
@@ -121,21 +128,87 @@ export class MealPlan implements OnInit {
 
   protected async prevWeek(): Promise<void> {
     this.week.set(shiftWeek(this.week(), -7));
+    this.resetSuggestionState();
     await this.reload();
   }
 
   protected async nextWeek(): Promise<void> {
     this.week.set(shiftWeek(this.week(), 7));
+    this.resetSuggestionState();
     await this.reload();
   }
 
   protected async gotoThisWeek(): Promise<void> {
     this.week.set(currentMonday());
+    this.resetSuggestionState();
     await this.reload();
   }
 
   protected recipeImage(recipeId: string): string | undefined {
     return this.recipes().find((r) => r.id === recipeId)?.imageUrl ?? undefined;
+  }
+
+  protected suggestionAt(date: string, slot: number): SuggestedPlanEntry | undefined {
+    return this.suggestions().get(`${date}|${slot}`);
+  }
+
+  protected hasSuggestions(): boolean {
+    return this.suggestions().size > 0;
+  }
+
+  protected async suggestWeek(): Promise<void> {
+    this.suggesting.set(true);
+    this.suggestWarning.set('');
+    this.suggestApplied.set(false);
+    try {
+      const res = await new Promise<SuggestPlanResponse>((resolve, reject) =>
+        this.planApi.suggest(this.week()).subscribe({ next: resolve, error: reject }),
+      );
+      const map = new Map<string, SuggestedPlanEntry>();
+      for (const entry of res.entries) {
+        map.set(`${entry.date}|${entry.slot}`, entry);
+      }
+      this.suggestions.set(map);
+      this.suggestSource.set(res.source);
+      this.suggestWarning.set(res.warning ?? '');
+    } catch {
+      this.suggestWarning.set(this.i18n.t('plan.suggestFail'));
+    } finally {
+      this.suggesting.set(false);
+    }
+  }
+
+  protected async applySuggestions(): Promise<void> {
+    const entries = [...this.suggestions().values()].map((s) => ({
+      date: s.date,
+      slot: s.slot,
+      recipeId: s.recipeId,
+    }));
+    if (entries.length === 0) {
+      return;
+    }
+
+    await new Promise<unknown>((res, rej) =>
+      this.planApi.applyEntries(entries).subscribe({ next: res, error: rej }),
+    );
+    this.suggestions.set(new Map());
+    this.suggestSource.set('');
+    this.suggestWarning.set('');
+    this.suggestApplied.set(true);
+    await this.reload();
+  }
+
+  protected cancelSuggestions(): void {
+    this.suggestions.set(new Map());
+    this.suggestSource.set('');
+    this.suggestWarning.set('');
+  }
+
+  private resetSuggestionState(): void {
+    this.suggestions.set(new Map());
+    this.suggestSource.set('');
+    this.suggestWarning.set('');
+    this.suggestApplied.set(false);
   }
 
   private weekNumber(iso: string): number {

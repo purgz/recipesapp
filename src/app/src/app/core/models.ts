@@ -83,6 +83,21 @@ export interface PlanEntry {
   recipeTitle: string | null;
 }
 
+export interface SuggestedPlanEntry {
+  date: string;
+  slot: number;
+  recipeId: string;
+  recipeTitle: string;
+  prepMinutes?: number | null;
+  cookMinutes?: number | null;
+}
+
+export interface SuggestPlanResponse {
+  source: 'ai' | 'fallback';
+  entries: SuggestedPlanEntry[];
+  warning?: string | null;
+}
+
 export interface ShoppingItem {
   id: string;
   name: string;

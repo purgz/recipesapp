@@ -72,6 +72,35 @@
     }
   }
 
+  &.suggested {
+    background: #f6fbf5;
+    border: 1.5px dashed #9ec894;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+
+    .title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .aibadge {
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #3d6b34;
+      border: 1px solid #bcd9b4;
+      background: #fff;
+      border-radius: 999px;
+      padding: 0.05rem 0.35rem;
+    }
+  }
+
   &.filled {
     background: #fff;
     border: 1px solid #eceae5;
@@ -197,6 +226,55 @@
   font-size: 0.85rem;
 }
 
+.suggestbtn {
+  border: 1px solid #bcd9b4;
+  background: #eaf4e8;
+  color: #2f5a27;
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.suggestwarn {
+  margin: 0 0 0.8rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #e8d3a3;
+  background: #fdf6e7;
+  color: #7a5b16;
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+
+.suggestok {
+  margin: 0 0 0.8rem;
+  color: #3d6b34;
+  font-size: 0.88rem;
+}
+
+.suggestbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px dashed #bcd9b4;
+  background: #f6fbf5;
+  border-radius: 10px;
+  font-size: 0.88rem;
+
+  .actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+}
+
 .navbtn {
   min-width: 44px;
   min-height: 44px;
@@ -211,6 +289,10 @@
       flex: 1;
       min-width: 150px;
       text-align: center;
+    }
+
+    .suggestbtn {
+      flex-basis: 100%;
     }
   }
 

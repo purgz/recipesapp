@@ -3,7 +3,26 @@
   <span class="weeklabel">{{ weekLabel() }}</span>
   <button type="button" class="ghost navbtn" (click)="nextWeek()">›</button>
   <button type="button" class="ghost small" (click)="gotoThisWeek()">{{ i18n.t('plan.thisWeek') }}</button>
+  <button type="button" class="small suggestbtn" (click)="suggestWeek()" [disabled]="suggesting()">
+    {{ suggesting() ? i18n.t('plan.suggesting') : i18n.t('plan.suggest') }}
+  </button>
 </section>
+
+@if (suggestWarning()) {
+  <p class="suggestwarn">{{ suggestWarning() }}</p>
+}
+@if (suggestApplied()) {
+  <p class="suggestok">{{ i18n.t('plan.suggestApplied') }}</p>
+}
+@if (hasSuggestions()) {
+  <div class="suggestbar">
+    <span>{{ i18n.t(suggestSource() === 'ai' ? 'plan.suggestAi' : 'plan.suggestFallback') }}</span>
+    <span class="actions">
+      <button type="button" (click)="applySuggestions()">{{ i18n.t('plan.apply') }}</button>
+      <button type="button" class="ghost" (click)="cancelSuggestions()">{{ i18n.t('plan.cancel') }}</button>
+    </span>
+  </div>
+}
 
 <div class="grid">
   <div class="colhead"></div>
@@ -25,7 +44,14 @@
           >✕</button>
         </div>
       } @else {
-        <div class="cell empty" (click)="openChooser(d.date, s.slot)">+</div>
+        @if (suggestionAt(d.date, s.slot); as sg) {
+          <div class="cell suggested" (click)="openChooser(d.date, s.slot)">
+            <span class="title">{{ sg.recipeTitle }}</span>
+            <span class="aibadge">AI</span>
+          </div>
+        } @else {
+          <div class="cell empty" (click)="openChooser(d.date, s.slot)">+</div>
+        }
       }
     }
   }
